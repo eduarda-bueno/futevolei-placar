@@ -9,21 +9,26 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.svg'],
+      includeAssets: ['icons/*.svg', 'icons/*.png', 'digital-7.ttf', 'digital-7-mono.ttf', 'ct-riozinho-logo.png'],
       manifest: {
-        name: 'Placar de Futevôlei',
-        short_name: 'Futevôlei',
-        description: 'Aplicativo para gerenciar placares de futevôlei',
-        theme_color: '#1e40af',
-        background_color: '#f8fafc',
+        name: 'Placar CT Riozinho',
+        short_name: 'CT Riozinho',
+        description: 'Placar CT Riozinho - Futevôlei & Beach Tennis',
+        theme_color: '#113776',
+        background_color: '#113776',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         start_url: '/',
         icons: [
           {
             src: '/icons/icon-192x192.svg',
             sizes: '192x192',
             type: 'image/svg+xml'
+          },
+          {
+            src: '/icons/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
           },
           {
             src: '/icons/icon-512x512.svg',
@@ -39,7 +44,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,ttf}']
       }
     })
   ]

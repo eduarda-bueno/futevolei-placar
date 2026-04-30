@@ -24,6 +24,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           >
             Placar
           </NavLink>
+          {/* Tabela de Jogo e Admin ocultos por enquanto
           <NavLink
             to="/chaves"
             className={({ isActive }) =>
@@ -34,7 +35,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               }`
             }
           >
-            Chaves
+            Tabela de Jogo
           </NavLink>
           <NavLink
             to="/admin"
@@ -48,6 +49,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           >
             Admin
           </NavLink>
+          */}
         </div>
       </nav>
       <main className="flex-1 px-4 py-6">{children}</main>
@@ -76,14 +78,12 @@ function AdminRoute() {
 function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<PlacarRapido />} />
-          <Route path="/chaves" element={<Chaves />} />
-          <Route path="/admin" element={<AdminRoute />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/" element={<PlacarRapido />} />
+        <Route path="/chaves" element={<Layout><Chaves /></Layout>} />
+        <Route path="/admin" element={<Layout><AdminRoute /></Layout>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </BrowserRouter>
   );
 }
