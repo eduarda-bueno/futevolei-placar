@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1e40af" rx="64"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="white" stroke-width="20"/>
+  <path d="M256 116 L256 256 L366 256" fill="none" stroke="white" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="430" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="48" font-weight="bold">FV</text>
+</svg>
