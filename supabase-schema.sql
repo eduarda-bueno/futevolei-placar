@@ -33,13 +33,24 @@ create table jogos (
   created_at timestamptz default now()
 );
 
+create table brackets (
+  id uuid default gen_random_uuid() primary key,
+  categoria_id uuid references categorias(id) not null unique,
+  dados jsonb not null,
+  campeao text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- Todos podem visualizar
 alter table torneios enable row level security;
+alter table brackets enable row level security;
 alter table categorias enable row level security;
 alter table duplas enable row level security;
 alter table jogos enable row level security;
 
 create policy "Leitura publica" on torneios for select using (true);
+create policy "Leitura publica" on brackets for select using (true);
 create policy "Leitura publica" on categorias for select using (true);
 create policy "Leitura publica" on duplas for select using (true);
 create policy "Leitura publica" on jogos for select using (true);
@@ -48,6 +59,10 @@ create policy "Leitura publica" on jogos for select using (true);
 create policy "Admin insere" on torneios for insert with check (auth.role() = 'authenticated');
 create policy "Admin atualiza" on torneios for update using (auth.role() = 'authenticated');
 create policy "Admin exclui" on torneios for delete using (auth.role() = 'authenticated');
+
+create policy "Admin insere" on brackets for insert with check (auth.role() = 'authenticated');
+create policy "Admin atualiza" on brackets for update using (auth.role() = 'authenticated');
+create policy "Admin exclui" on brackets for delete using (auth.role() = 'authenticated');
 
 create policy "Admin insere" on categorias for insert with check (auth.role() = 'authenticated');
 create policy "Admin atualiza" on categorias for update using (auth.role() = 'authenticated');

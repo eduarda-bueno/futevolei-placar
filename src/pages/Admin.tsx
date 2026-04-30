@@ -183,6 +183,7 @@ export function Admin({ onLogout }: AdminProps) {
   useEffect(() => {
     if (categoriaSelecionada) {
       carregarDuplas(categoriaSelecionada);
+      carregarBracket(categoriaSelecionada);
     }
   }, [categoriaSelecionada]);
 
@@ -221,6 +222,27 @@ export function Admin({ onLogout }: AdminProps) {
   async function carregarDuplas(categoriaId: string) {
     const { data } = await supabase.from('duplas').select('*').eq('categoria_id', categoriaId).order('jogador1');
     setDuplas(data || []);
+  }
+
+  async function carregarBracket(categoriaId: string) {
+    const { data } = await supabase.from('brackets').select('*').eq('categoria_id', categoriaId).single();
+    if (data) {
+      setBracket(data.dados as BracketRound[]);
+      setCampeao(data.campeao || null);
+    } else {
+      setBracket(null);
+      setCampeao(null);
+    }
+  }
+
+  async function salvarBracket(rounds: BracketRound[], champ: string | null) {
+    if (!categoriaSelecionada) return;
+    await supabase.from('brackets').upsert({
+      categoria_id: categoriaSelecionada,
+      dados: rounds as any,
+      campeao: champ,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'categoria_id' });
   }
 
   function selecionarCategoriaPrincipal(nome: string) {
@@ -281,8 +303,10 @@ export function Admin({ onLogout }: AdminProps) {
   function sortearChave() {
     if (duplas.length < 2) return;
     const rounds = buildBracket(duplas);
-    setBracket(propagateWinners(rounds));
+    const propagated = propagateWinners(rounds);
+    setBracket(propagated);
     setCampeao(null);
+    salvarBracket(propagated, null);
   }
 
   function selecionarVencedor(roundIdx: number, matchIdx: number, side: 'a' | 'b') {
@@ -311,14 +335,14 @@ export function Admin({ onLogout }: AdminProps) {
 
     // Check champion
     const finalMatch = propagated[propagated.length - 1][0];
+    let champ: string | null = null;
     if (finalMatch.winner) {
       const winnerSlot = finalMatch[finalMatch.winner];
-      setCampeao(winnerSlot && winnerSlot !== 'BYE' ? winnerSlot.nome : null);
-    } else {
-      setCampeao(null);
+      champ = winnerSlot && winnerSlot !== 'BYE' ? winnerSlot.nome : null;
     }
-
+    setCampeao(champ);
     setBracket(propagated);
+    salvarBracket(propagated, champ);
   }
 
   function trocarDuplas(r1: number, m1: number, s1: 'a' | 'b', r2: number, m2: number, s2: 'a' | 'b') {
@@ -341,10 +365,12 @@ export function Admin({ onLogout }: AdminProps) {
       else if (match.a === 'BYE' && match.b && match.b !== 'BYE') match.winner = 'b';
     }
 
-    setBracket(propagateWinners(updated));
+    const propagated = propagateWinners(updated);
+    setBracket(propagated);
     setCampeao(null);
     setModoTroca(false);
     setTrocaSelecionada(null);
+    salvarBracket(propagated, null);
   }
 
   function handleSlotClickTroca(rIdx: number, mIdx: number, side: 'a' | 'b') {
