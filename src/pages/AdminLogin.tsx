@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
+const BLUE = '#113776';
+
 interface AdminLoginProps {
   onLogin: () => void;
 }
@@ -32,16 +34,27 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
   }
 
   return (
-    <div className="max-w-sm mx-auto">
-      <h1 className="text-xl font-bold text-slate-800 mb-6 text-center">Admin</h1>
-      <form onSubmit={handleLogin} className="space-y-4">
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 350, margin: '0 auto', width: '100%' }}>
+      <h1 style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 24 }}>
+        Configurações
+      </h1>
+      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{
+            width: '100%',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: 12,
+            padding: '14px 16px',
+            fontSize: 14,
+            outline: 'none',
+            background: 'rgba(255,255,255,0.1)',
+            color: '#fff',
+          }}
         />
         <input
           type="password"
@@ -49,13 +62,33 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           required
-          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{
+            width: '100%',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: 12,
+            padding: '14px 16px',
+            fontSize: 14,
+            outline: 'none',
+            background: 'rgba(255,255,255,0.1)',
+            color: '#fff',
+          }}
         />
-        {erro && <p className="text-red-500 text-sm">{erro}</p>}
+        {erro && <p style={{ color: '#ff6b6b', fontSize: 13 }}>{erro}</p>}
         <button
           type="submit"
           disabled={carregando}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+          style={{
+            width: '100%',
+            padding: 14,
+            borderRadius: 12,
+            border: 'none',
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: BLUE,
+            background: '#fff',
+            cursor: 'pointer',
+            opacity: carregando ? 0.6 : 1,
+          }}
         >
           {carregando ? 'Entrando...' : 'Entrar'}
         </button>

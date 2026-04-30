@@ -1,5 +1,12 @@
 -- Executar no SQL Editor do Supabase (https://supabase.com/dashboard)
 
+create table torneios (
+  id uuid default gen_random_uuid() primary key,
+  nome text not null,
+  data date not null,
+  created_at timestamptz default now()
+);
+
 create table categorias (
   id uuid default gen_random_uuid() primary key,
   nome text not null,
@@ -27,15 +34,21 @@ create table jogos (
 );
 
 -- Todos podem visualizar
+alter table torneios enable row level security;
 alter table categorias enable row level security;
 alter table duplas enable row level security;
 alter table jogos enable row level security;
 
+create policy "Leitura publica" on torneios for select using (true);
 create policy "Leitura publica" on categorias for select using (true);
 create policy "Leitura publica" on duplas for select using (true);
 create policy "Leitura publica" on jogos for select using (true);
 
 -- Somente usuarios autenticados (admin) podem modificar
+create policy "Admin insere" on torneios for insert with check (auth.role() = 'authenticated');
+create policy "Admin atualiza" on torneios for update using (auth.role() = 'authenticated');
+create policy "Admin exclui" on torneios for delete using (auth.role() = 'authenticated');
+
 create policy "Admin insere" on categorias for insert with check (auth.role() = 'authenticated');
 create policy "Admin atualiza" on categorias for update using (auth.role() = 'authenticated');
 create policy "Admin exclui" on categorias for delete using (auth.role() = 'authenticated');

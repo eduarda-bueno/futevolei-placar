@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 const BLUE = '#113776';
-const LOGO_BG = '#2a5082';
 
 export function PlacarRapido() {
   const [pontosA, setPontosA] = useState(0);
@@ -160,94 +159,33 @@ export function PlacarRapido() {
           }
         }
       `}</style>
-      <div
+
+      {/* Score Cards */}
+      <div className="score-row">
+        {scoreCard('dark', 'A', nomeA, setNomeA, pontosA, setPontosA)}
+        {scoreCard('light', 'B', nomeB, setNomeB, pontosB, setPontosB)}
+      </div>
+
+      {/* Zerar Placar */}
+      <button
+        onClick={resetar}
         style={{
-          position: 'fixed',
-          inset: 0,
-          background: `linear-gradient(180deg, ${LOGO_BG} 0%, ${LOGO_BG} 15%, #3a7aaa 35%, #5aabb8 50%, #7ec8c8 60%, #c9b896 75%, #e2ceab 90%, #d4b88a 100%)`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+          width: '100%',
+          padding: 12,
+          borderRadius: 12,
+          border: 'none',
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: BLUE,
+          background: '#fff',
+          cursor: 'pointer',
           fontFamily: 'Roboto, sans-serif',
-          overflow: 'hidden',
+          margin: '10px 0',
+          flexShrink: 0,
         }}
       >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: 500,
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '20px 16px 12px',
-          }}
-        >
-            {/* Score Cards */}
-          <div className="score-row">
-            {scoreCard('dark', 'A', nomeA, setNomeA, pontosA, setPontosA)}
-            {scoreCard('light', 'B', nomeB, setNomeB, pontosB, setPontosB)}
-          </div>
-
-          {/* Zerar Placar */}
-          <button
-            onClick={resetar}
-            style={{
-              width: '100%',
-              padding: 12,
-              borderRadius: 12,
-              border: 'none',
-              fontSize: 16,
-              fontWeight: 'bold',
-              color: BLUE,
-              background: '#fff',
-              cursor: 'pointer',
-              fontFamily: 'Roboto, sans-serif',
-              margin: '10px 0',
-              flexShrink: 0,
-            }}
-          >
-            Zerar Placar
-          </button>
-
-          {/* Wave separator */}
-          <svg
-            viewBox="0 0 400 20"
-            preserveAspectRatio="none"
-            style={{ width: '100%', height: 14, flexShrink: 0, display: 'block' }}
-          >
-            <path
-              d="M0,10 C50,0 100,20 150,10 C200,0 250,20 300,10 C350,0 400,20 400,10"
-              fill="none"
-              stroke="rgba(255,255,255,0.25)"
-              strokeWidth="1.5"
-            />
-          </svg>
-
-          {/* Footer Nav */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 40,
-              paddingTop: 8,
-            }}
-          >
-            <div style={{ color: '#fff', textAlign: 'center', fontSize: 11, width: 70 }}>
-              <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>📋</span>
-              Placar
-            </div>
-            <div style={{ color: '#fff', textAlign: 'center', fontSize: 11, opacity: 0.5, width: 70 }}>
-              <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚽</span>
-              Jogos
-            </div>
-            <div style={{ color: '#fff', textAlign: 'center', fontSize: 11, opacity: 0.5, width: 70 }}>
-              <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚙️</span>
-              Config
-            </div>
-          </div>
-        </div>
-      </div>
+        Zerar Placar
+      </button>
     </>
   );
 }
