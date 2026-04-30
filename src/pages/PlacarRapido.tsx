@@ -3,8 +3,8 @@ import { useState } from 'react';
 export function PlacarRapido() {
   const [pontosA, setPontosA] = useState(0);
   const [pontosB, setPontosB] = useState(0);
-  const [nomeA, setNomeA] = useState('Time A');
-  const [nomeB, setNomeB] = useState('Time B');
+  const [nomeA, setNomeA] = useState('Dupla A');
+  const [nomeB, setNomeB] = useState('Dupla B');
   const [editando, setEditando] = useState<'A' | 'B' | null>(null);
 
   const resetar = () => {
@@ -100,7 +100,7 @@ export function PlacarRapido() {
       </button>
 
       <p className="text-center text-xs text-slate-400 mt-4">
-        Clique no nome do time para editar
+        Clique no nome da dupla para editar
       </p>
     </div>
   );
