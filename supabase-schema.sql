@@ -4,6 +4,7 @@ create table torneios (
   id uuid default gen_random_uuid() primary key,
   nome text not null,
   data date not null,
+  ativo boolean default true,
   created_at timestamptz default now()
 );
 

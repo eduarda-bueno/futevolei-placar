@@ -188,7 +188,7 @@ export function Admin({ onLogout }: AdminProps) {
   }, [categoriaSelecionada]);
 
   async function carregarTorneios() {
-    const { data } = await supabase.from('torneios').select('*').order('data', { ascending: false });
+    const { data } = await supabase.from('torneios').select('*').eq('ativo', true).order('data', { ascending: false });
     setTorneios(data || []);
   }
 
@@ -203,7 +203,7 @@ export function Admin({ onLogout }: AdminProps) {
 
   async function excluirTorneio(id: string) {
     if (!confirm('Excluir torneio?')) return;
-    await supabase.from('torneios').delete().eq('id', id);
+    await supabase.from('torneios').update({ ativo: false }).eq('id', id);
     if (torneioSelecionado === id) setTorneioSelecionado(null);
     carregarTorneios();
   }
