@@ -29,7 +29,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <div
         style={{
           width: '100%',
-          maxWidth: current === '/admin' ? 1200 : 500,
+          maxWidth: current === '/admin' || current === '/chaves' ? 1200 : 500,
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
