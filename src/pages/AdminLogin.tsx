@@ -8,7 +8,7 @@ interface AdminLoginProps {
 }
 
 export function AdminLogin({ onLogin }: AdminLoginProps) {
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
@@ -18,6 +18,8 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     setErro('');
     setCarregando(true);
 
+    const email = usuario.includes('@') ? usuario : `${usuario}@ctriozinho.app`;
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
@@ -26,7 +28,7 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     setCarregando(false);
 
     if (error) {
-      setErro('Email ou senha incorretos.');
+      setErro('Usuário ou senha incorretos.');
       return;
     }
 
@@ -40,11 +42,13 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
       </h1>
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          type="text"
+          placeholder="Usuário"
+          value={usuario}
+          onChange={(e) => setUsuario(e.target.value)}
           required
+          autoCapitalize="none"
+          autoCorrect="off"
           style={{
             width: '100%',
             border: '1px solid rgba(255,255,255,0.3)',
