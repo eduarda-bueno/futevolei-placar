@@ -5,6 +5,7 @@ create table torneios (
   nome text not null,
   data date not null,
   ativo boolean default true,
+  fixado boolean default false,
   created_at timestamptz default now()
 );
 

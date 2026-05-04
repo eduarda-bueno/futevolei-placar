@@ -175,6 +175,7 @@ export function Admin({ onLogout }: AdminProps) {
   const [campeao, setCampeao] = useState<string | null>(null);
   const [modoTroca, setModoTroca] = useState(false);
   const [trocaSelecionada, setTrocaSelecionada] = useState<{ round: number; match: number; side: 'a' | 'b' } | null>(null);
+  const [showFixarPopup, setShowFixarPopup] = useState(false);
 
   useEffect(() => {
     carregarTorneios();
@@ -243,6 +244,19 @@ export function Admin({ onLogout }: AdminProps) {
       campeao: champ,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'categoria_id' });
+  }
+
+  function torneioFixado(): boolean {
+    const t = torneios.find((t) => t.id === torneioSelecionado);
+    return !!(t && (t as any).fixado);
+  }
+
+  async function toggleFixarTorneio() {
+    if (!torneioSelecionado) return;
+    const novoValor = !torneioFixado();
+    await supabase.from('torneios').update({ fixado: novoValor }).eq('id', torneioSelecionado);
+    await carregarTorneios();
+    setShowFixarPopup(false);
   }
 
   function selecionarCategoriaPrincipal(nome: string) {
@@ -711,6 +725,94 @@ export function Admin({ onLogout }: AdminProps) {
           >
             {modoTroca ? 'Cancelar Troca' : 'Alterar Jogos'}
           </button>
+
+          {/* Fixar Torneio */}
+          <button
+            onClick={() => setShowFixarPopup(true)}
+            style={{
+              width: '100%',
+              padding: 14,
+              borderRadius: 12,
+              border: torneioFixado() ? '2px solid #2ecc71' : '2px solid rgba(255,255,255,0.3)',
+              fontSize: 14,
+              fontWeight: 'bold',
+              color: torneioFixado() ? '#2ecc71' : '#fff',
+              background: 'transparent',
+              cursor: 'pointer',
+              marginTop: 8,
+              flexShrink: 0,
+            }}
+          >
+            {torneioFixado() ? 'Torneio Fixado' : 'Fixar Torneio'}
+          </button>
+
+          {/* Popup Fixar/Desfixar */}
+          {showFixarPopup && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.6)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 100,
+              }}
+              onClick={() => setShowFixarPopup(false)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: '#fff',
+                  borderRadius: 16,
+                  padding: '28px 24px',
+                  maxWidth: 320,
+                  width: '90%',
+                  textAlign: 'center',
+                }}
+              >
+                <p style={{ color: BLUE, fontSize: 15, fontWeight: 600, marginBottom: 20 }}>
+                  {torneioFixado()
+                    ? 'Deseja desfixar este torneio do menu de jogos?'
+                    : 'Deseja fixar este torneio no menu de jogos?'}
+                </p>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    onClick={toggleFixarTorneio}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: 'none',
+                      fontSize: 14,
+                      fontWeight: 'bold',
+                      color: '#fff',
+                      background: torneioFixado() ? '#e74c3c' : '#2ecc71',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Sim
+                  </button>
+                  <button
+                    onClick={() => setShowFixarPopup(false)}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: `1px solid ${BLUE}`,
+                      fontSize: 14,
+                      fontWeight: 'bold',
+                      color: BLUE,
+                      background: '#fff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Nao
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -62,7 +62,7 @@ export function Chaves() {
 
   async function carregarTorneios() {
     setCarregando(true);
-    const { data } = await supabase.from('torneios').select('*').eq('ativo', true).order('data', { ascending: false });
+    const { data } = await supabase.from('torneios').select('*').eq('ativo', true).eq('fixado', true).order('data', { ascending: false });
     setTorneios(data || []);
     setCarregando(false);
   }
