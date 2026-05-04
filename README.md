@@ -1,73 +1,88 @@
-# React + TypeScript + Vite
+# Placar CT Riozinho - Futevolei & Beach Tennis
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicativo PWA para gerenciar placares e torneios de futevolei e beach tennis.
 
-Currently, two official plugins are available:
+## Funcionalidades
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Placar
+- Placar digital com fonte Digital-7 (estilo LCD)
+- Botoes de + e - para cada dupla
+- Nomes das duplas editaveis por clique
+- Layout responsivo: vertical (cards empilhados) e horizontal (lado a lado)
+- Botao "Zerar Placar" com confirmacao
 
-## React Compiler
+### Configuracoes (Admin - acesso via login)
+- Criar e gerenciar torneios
+- Categorias: Feminino, Masculino, Misto
+- Subcategorias: Estreante, Iniciante, Intermediario, Avancado, 30+
+- Cadastro de duplas com input unico
+- Sorteio automatico de chave eliminatoria com BYEs
+- Bracket visual horizontal com conectores SVG
+- Selecao de vencedor por clique
+- Troca de duplas de posicao (botao "Alterar Jogos")
+- Bracket salvo no Supabase (persiste entre sessoes)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Jogos
+- Visualizacao publica dos jogos por categoria
+- Cards grandes com placar destacado
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Frontend**: React 19 + TypeScript + Vite
+- **Estilo**: Tailwind CSS 4 + inline styles
+- **Backend**: Supabase (PostgreSQL + Auth + RLS)
+- **PWA**: vite-plugin-pwa com workbox
+- **Fontes**: Roboto (UI) + Digital-7 (placar)
+- **Deploy**: Vercel
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Setup Local
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+```bash
+# Instalar dependencias
+npm install
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Configurar variaveis de ambiente
+# Criar arquivo .env com:
+# VITE_SUPABASE_URL=sua_url
+# VITE_SUPABASE_ANON_KEY=sua_key
+
+# Rodar em desenvolvimento
+npm run dev
+
+# Build para producao
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Banco de Dados (Supabase)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Executar o arquivo `supabase-schema.sql` no SQL Editor do Supabase para criar todas as tabelas:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **torneios** - nome e data dos torneios
+- **categorias** - categorias do torneio (ex: Feminino - Iniciante)
+- **duplas** - duplas cadastradas por categoria
+- **jogos** - jogos com placar e status
+- **brackets** - chave eliminatoria salva como JSON
+
+Todas as tabelas possuem Row Level Security:
+- Leitura publica (qualquer pessoa pode ver)
+- Escrita apenas para usuarios autenticados (admin)
+
+## Estrutura do Projeto
+
+```
+src/
+  App.tsx           # Layout compartilhado (degrade + menu inferior)
+  main.tsx          # Entry point
+  index.css         # Tailwind import
+  lib/
+    supabase.ts     # Cliente Supabase
+  pages/
+    PlacarRapido.tsx  # Tela do placar digital
+    Chaves.tsx        # Tela publica de jogos
+    Admin.tsx         # Painel admin (torneios, categorias, bracket)
+    AdminLogin.tsx    # Tela de login admin
+public/
+  ct-riozinho-logo.png  # Logo do CT
+  digital-7.ttf         # Fonte do placar
+  digital-7-mono.ttf    # Fonte do placar (mono)
 ```

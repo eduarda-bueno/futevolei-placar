@@ -1,7 +1,8 @@
 {
-  "name": "futevolei-placar",
+  "name": "placar-ct-riozinho",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Placar CT Riozinho - Futevolei & Beach Tennis",
   "type": "module",
   "scripts": {
     "dev": "vite",
