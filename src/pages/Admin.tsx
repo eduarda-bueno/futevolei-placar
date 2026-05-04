@@ -197,12 +197,7 @@ export function Admin({ onLogout }: AdminProps) {
     e.preventDefault();
     if (!novoTorneioNome.trim()) return;
     const hoje = new Date().toISOString().split('T')[0];
-    const { error } = await supabase.from('torneios').insert({ nome: novoTorneioNome.trim(), data: hoje });
-    if (error) {
-      console.error('Erro ao criar torneio:', error);
-      alert('Erro ao criar torneio: ' + error.message);
-      return;
-    }
+    await supabase.from('torneios').insert({ nome: novoTorneioNome.trim(), data: hoje });
     setNovoTorneioNome('');
     carregarTorneios();
   }
