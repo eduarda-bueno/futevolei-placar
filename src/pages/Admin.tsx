@@ -436,16 +436,93 @@ export function Admin({ onLogout }: AdminProps) {
         </form>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {torneios.map((t) => (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
-              <button onClick={() => selecionarTorneio(t.id)} style={{ flex: 1, textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <span style={{ color: BLUE, fontWeight: 'bold', fontSize: 15, display: 'block' }}>{t.nome}</span>
-                <span style={{ color: '#999', fontSize: 12 }}>{formatarData(t.data)}</span>
-              </button>
-              <button onClick={() => excluirTorneio(t.id)} style={{ color: '#e55', fontSize: 12, padding: '0 16px', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-            </div>
-          ))}
+          {torneios.map((t) => {
+            const isFixado = !!(t as any).fixado;
+            return (
+              <div key={t.id} style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
+                <button onClick={() => selecionarTorneio(t.id)} style={{ flex: 1, textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <span style={{ color: BLUE, fontWeight: 'bold', fontSize: 15, display: 'block' }}>{t.nome}</span>
+                  <span style={{ color: '#999', fontSize: 12 }}>{formatarData(t.data)}</span>
+                </button>
+                <button
+                  onClick={() => { setTorneioSelecionado(t.id); setShowFixarPopup(true); }}
+                  style={{ padding: '6px 12px', marginRight: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 'bold', color: isFixado ? '#2ecc71' : '#999', borderRadius: 6 }}
+                >
+                  {isFixado ? '📌 Fixado' : '📌 Fixar'}
+                </button>
+                <button onClick={() => excluirTorneio(t.id)} style={{ color: '#e55', fontSize: 12, padding: '0 12px', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+              </div>
+            );
+          })}
         </div>
+
+        {/* Popup Fixar/Desfixar */}
+        {showFixarPopup && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 100,
+            }}
+            onClick={() => setShowFixarPopup(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#fff',
+                borderRadius: 16,
+                padding: '28px 24px',
+                maxWidth: 320,
+                width: '90%',
+                textAlign: 'center',
+              }}
+            >
+              <p style={{ color: BLUE, fontSize: 15, fontWeight: 600, marginBottom: 20 }}>
+                {torneioFixado()
+                  ? 'Deseja desfixar este torneio do menu de jogos?'
+                  : 'Deseja fixar este torneio no menu de jogos?'}
+              </p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={toggleFixarTorneio}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: 'none',
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    color: '#fff',
+                    background: torneioFixado() ? '#e74c3c' : '#2ecc71',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Sim
+                </button>
+                <button
+                  onClick={() => setShowFixarPopup(false)}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: `1px solid ${BLUE}`,
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    color: BLUE,
+                    background: '#fff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Nao
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -726,93 +803,6 @@ export function Admin({ onLogout }: AdminProps) {
             {modoTroca ? 'Cancelar Troca' : 'Alterar Jogos'}
           </button>
 
-          {/* Fixar Torneio */}
-          <button
-            onClick={() => setShowFixarPopup(true)}
-            style={{
-              width: '100%',
-              padding: 14,
-              borderRadius: 12,
-              border: torneioFixado() ? '2px solid #2ecc71' : '2px solid rgba(255,255,255,0.3)',
-              fontSize: 14,
-              fontWeight: 'bold',
-              color: torneioFixado() ? '#2ecc71' : '#fff',
-              background: 'transparent',
-              cursor: 'pointer',
-              marginTop: 8,
-              flexShrink: 0,
-            }}
-          >
-            {torneioFixado() ? 'Torneio Fixado' : 'Fixar Torneio'}
-          </button>
-
-          {/* Popup Fixar/Desfixar */}
-          {showFixarPopup && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.6)',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 100,
-              }}
-              onClick={() => setShowFixarPopup(false)}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  background: '#fff',
-                  borderRadius: 16,
-                  padding: '28px 24px',
-                  maxWidth: 320,
-                  width: '90%',
-                  textAlign: 'center',
-                }}
-              >
-                <p style={{ color: BLUE, fontSize: 15, fontWeight: 600, marginBottom: 20 }}>
-                  {torneioFixado()
-                    ? 'Deseja desfixar este torneio do menu de jogos?'
-                    : 'Deseja fixar este torneio no menu de jogos?'}
-                </p>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    onClick={toggleFixarTorneio}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: 'none',
-                      fontSize: 14,
-                      fontWeight: 'bold',
-                      color: '#fff',
-                      background: torneioFixado() ? '#e74c3c' : '#2ecc71',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Sim
-                  </button>
-                  <button
-                    onClick={() => setShowFixarPopup(false)}
-                    style={{
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 10,
-                      border: `1px solid ${BLUE}`,
-                      fontSize: 14,
-                      fontWeight: 'bold',
-                      color: BLUE,
-                      background: '#fff',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Nao
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>
