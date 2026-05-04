@@ -176,6 +176,7 @@ export function Admin({ onLogout }: AdminProps) {
   const [modoTroca, setModoTroca] = useState(false);
   const [trocaSelecionada, setTrocaSelecionada] = useState<{ round: number; match: number; side: 'a' | 'b' } | null>(null);
   const [showFixarPopup, setShowFixarPopup] = useState(false);
+  const [verBracket, setVerBracket] = useState(false);
 
   useEffect(() => {
     carregarTorneios();
@@ -582,13 +583,19 @@ export function Admin({ onLogout }: AdminProps) {
   return (
     <div style={{ flex: 1, paddingTop: 16, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
-        {btnVoltar(() => { setBracket(null); setCampeao(null); setEtapa('categoria'); })}
+        {btnVoltar(() => {
+          if (verBracket) {
+            setVerBracket(false);
+          } else {
+            setEtapa('subcategoria');
+          }
+        })}
         <h1 style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>{categoriaNome}</h1>
         {btnSair}
       </div>
 
       {/* ── Modo: Cadastro de duplas ── */}
-      {!bracket && (
+      {!verBracket && (
         <>
           <h2 style={{ color: '#fff', fontWeight: 600, marginBottom: 12, textAlign: 'center', flexShrink: 0 }}>Cadastrar Duplas</h2>
 
@@ -619,19 +626,36 @@ export function Admin({ onLogout }: AdminProps) {
             )}
           </div>
 
-          {duplas.length >= 2 && (
+          {duplas.length >= 2 && !bracket && (
             <button
-              onClick={sortearChave}
+              onClick={() => { sortearChave(); setVerBracket(true); }}
               style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer', flexShrink: 0 }}
             >
               Sortear e Iniciar
             </button>
           )}
+
+          {bracket && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={() => setVerBracket(true)}
+                style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}
+              >
+                Ver Sorteio
+              </button>
+              <button
+                onClick={() => { if (confirm('Refazer o sorteio? O sorteio atual sera perdido.')) { sortearChave(); setVerBracket(true); } }}
+                style={{ flex: 1, padding: 14, borderRadius: 12, border: '2px solid rgba(255,255,255,0.3)', fontSize: 14, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer' }}
+              >
+                Refazer Sorteio
+              </button>
+            </div>
+          )}
         </>
       )}
 
       {/* ── Modo: Chave do torneio ── */}
-      {bracket && (
+      {bracket && verBracket && (
         <>
           {/* Campeão */}
           {campeao && !modoTroca && (
