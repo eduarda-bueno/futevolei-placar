@@ -12,6 +12,7 @@ create table torneios (
 create table categorias (
   id uuid default gen_random_uuid() primary key,
   nome text not null,
+  ativo boolean default true,
   created_at timestamptz default now()
 );
 
@@ -20,6 +21,7 @@ create table duplas (
   categoria_id uuid references categorias(id) not null,
   jogador1 text not null,
   jogador2 text not null,
+  ativo boolean default true,
   created_at timestamptz default now()
 );
 
@@ -32,6 +34,7 @@ create table jogos (
   pontos_b int,
   ordem int not null default 1,
   status text not null default 'pendente',
+  ativo boolean default true,
   created_at timestamptz default now()
 );
 
@@ -40,6 +43,7 @@ create table brackets (
   categoria_id uuid references categorias(id) not null unique,
   dados jsonb not null,
   campeao text,
+  ativo boolean default true,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

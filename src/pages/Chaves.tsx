@@ -68,13 +68,13 @@ export function Chaves() {
   }
 
   async function carregarCategorias() {
-    const { data } = await supabase.from('categorias').select('*').order('nome');
+    const { data } = await supabase.from('categorias').select('*').eq('ativo', true).order('nome');
     setCategorias(data || []);
   }
 
   async function carregarBracket(categoriaId: string) {
     setCarregandoBracket(true);
-    const { data } = await supabase.from('brackets').select('*').eq('categoria_id', categoriaId).single();
+    const { data } = await supabase.from('brackets').select('*').eq('categoria_id', categoriaId).eq('ativo', true).single();
     if (data) {
       setBracket(data.dados as BracketRound[]);
       setCampeao(data.campeao || null);

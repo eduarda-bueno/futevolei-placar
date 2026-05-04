@@ -216,17 +216,17 @@ export function Admin({ onLogout }: AdminProps) {
   }
 
   async function carregarCategorias() {
-    const { data } = await supabase.from('categorias').select('*').order('nome');
+    const { data } = await supabase.from('categorias').select('*').eq('ativo', true).order('nome');
     setCategorias(data || []);
   }
 
   async function carregarDuplas(categoriaId: string) {
-    const { data } = await supabase.from('duplas').select('*').eq('categoria_id', categoriaId).order('jogador1');
+    const { data } = await supabase.from('duplas').select('*').eq('categoria_id', categoriaId).eq('ativo', true).order('jogador1');
     setDuplas(data || []);
   }
 
   async function carregarBracket(categoriaId: string) {
-    const { data } = await supabase.from('brackets').select('*').eq('categoria_id', categoriaId).single();
+    const { data } = await supabase.from('brackets').select('*').eq('categoria_id', categoriaId).eq('ativo', true).single();
     if (data) {
       setBracket(data.dados as BracketRound[]);
       setCampeao(data.campeao || null);
@@ -300,7 +300,7 @@ export function Admin({ onLogout }: AdminProps) {
 
   async function excluirDupla(id: string) {
     if (!categoriaSelecionada) return;
-    await supabase.from('duplas').delete().eq('id', id);
+    await supabase.from('duplas').update({ ativo: false }).eq('id', id);
     carregarDuplas(categoriaSelecionada);
   }
 
