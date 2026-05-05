@@ -67,8 +67,8 @@ export function Chaves() {
     setCarregando(false);
   }
 
-  async function carregarCategorias() {
-    const { data } = await supabase.from('categorias').select('*').eq('ativo', true).order('nome');
+  async function carregarCategorias(torneioId: string) {
+    const { data } = await supabase.from('categorias').select('*').eq('torneio_id', torneioId).eq('ativo', true).order('nome');
     setCategorias(data || []);
   }
 
@@ -87,7 +87,7 @@ export function Chaves() {
 
   function selecionarTorneio(id: string) {
     setTorneioSelecionado(id);
-    carregarCategorias();
+    carregarCategorias(id);
     setTela('categorias');
   }
 

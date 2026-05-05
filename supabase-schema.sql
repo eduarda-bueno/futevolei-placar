@@ -11,6 +11,7 @@ create table torneios (
 
 create table categorias (
   id uuid default gen_random_uuid() primary key,
+  torneio_id uuid references torneios(id),
   nome text not null,
   ativo boolean default true,
   created_at timestamptz default now()

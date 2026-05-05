@@ -217,7 +217,8 @@ export function Admin({ onLogout }: AdminProps) {
   }
 
   async function carregarCategorias() {
-    const { data } = await supabase.from('categorias').select('*').eq('ativo', true).order('nome');
+    if (!torneioSelecionado) return;
+    const { data } = await supabase.from('categorias').select('*').eq('torneio_id', torneioSelecionado).eq('ativo', true).order('nome');
     setCategorias(data || []);
   }
 
@@ -269,7 +270,7 @@ export function Admin({ onLogout }: AdminProps) {
     const nomeCompleto = `${categoriaPrincipal} - ${sub}`;
     let cat = categorias.find((c) => c.nome === nomeCompleto);
     if (!cat) {
-      const { data } = await supabase.from('categorias').insert({ nome: nomeCompleto }).select().single();
+      const { data } = await supabase.from('categorias').insert({ nome: nomeCompleto, torneio_id: torneioSelecionado }).select().single();
       if (data) {
         cat = data;
         await carregarCategorias();
