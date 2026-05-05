@@ -82,50 +82,42 @@ function buildBracket(duplasList: Dupla[]): BracketRound[] {
   let size = 1;
   while (size < teams.length) size *= 2;
   const byeCount = size - teams.length;
-
-  // Build seeded list: teams fill first, BYEs at the end of each pair
-  // This ensures BYEs are spread evenly and always in slot B position
-  const seeded: BracketSlot[] = new Array(size).fill(null);
-
-  // Place all teams first
-  for (let i = 0; i < teams.length; i++) {
-    seeded[i] = teams[i];
-  }
-  // Fill remaining with BYE
-  for (let i = teams.length; i < size; i++) {
-    seeded[i] = 'BYE';
-  }
-
-  // Now interleave so BYEs spread across the bracket (not all at bottom)
-  // Use standard tournament seeding: 1v16, 8v9, 5v12, 4v13, etc.
-  // Simpler: just ensure BYEs pair with real teams by swapping
-  // Put BYE always as slot B in a match, spread across top and bottom
-  const paired: BracketSlot[] = new Array(size).fill(null);
-  const realTeams = seeded.filter((s) => s !== 'BYE');
   const totalMatches = size / 2;
 
-  // Matches that get a BYE (spread from the end, every other match)
-  const byeMatchIndices: number[] = [];
+  // Strategy: put real matches in the MIDDLE of the bracket,
+  // BYEs at the TOP and BOTTOM (spread evenly from edges)
+  const slots: BracketSlot[] = new Array(size).fill(null);
+
+  // Determine which match positions get BYEs (from edges inward)
+  const byePositions = new Set<number>();
+  let top = 0;
+  let bottom = totalMatches - 1;
   for (let i = 0; i < byeCount; i++) {
-    // Spread BYEs: alternate top and bottom of bracket
     if (i % 2 === 0) {
-      byeMatchIndices.push(totalMatches - 1 - Math.floor(i / 2));
+      byePositions.add(top);
+      top++;
     } else {
-      byeMatchIndices.push(Math.floor(i / 2));
+      byePositions.add(bottom);
+      bottom--;
     }
   }
 
+  // Fill slots: BYE matches get 1 team + BYE, real matches get 2 teams
   let teamIdx = 0;
   for (let m = 0; m < totalMatches; m++) {
-    const isBye = byeMatchIndices.includes(m);
-    paired[m * 2] = realTeams[teamIdx++];
-    paired[m * 2 + 1] = isBye ? 'BYE' : realTeams[teamIdx++];
+    if (byePositions.has(m)) {
+      slots[m * 2] = teams[teamIdx++];
+      slots[m * 2 + 1] = 'BYE';
+    } else {
+      slots[m * 2] = teams[teamIdx++];
+      slots[m * 2 + 1] = teams[teamIdx++];
+    }
   }
 
   // Build first round
   const firstRound: BracketRound = [];
   for (let i = 0; i < size; i += 2) {
-    const match: BracketMatch = { a: paired[i], b: paired[i + 1], winner: null };
+    const match: BracketMatch = { a: slots[i], b: slots[i + 1], winner: null };
     if (match.b === 'BYE' && match.a && match.a !== 'BYE') {
       match.winner = 'a';
     } else if (match.a === 'BYE' && match.b && match.b !== 'BYE') {
