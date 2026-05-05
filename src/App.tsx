@@ -110,6 +110,9 @@ function AppLayout({ children }: { children: React.ReactNode }) {
             Config
           </div>
         </div>
+        <p style={{ textAlign: 'center', fontSize: 8, color: 'rgba(255,255,255,0.2)', marginTop: 6, paddingBottom: 2 }}>
+          desenvolvido por duda
+        </p>
       </div>
     </div>
   );
