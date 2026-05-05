@@ -16,20 +16,24 @@ Aplicativo PWA para gerenciar placares e torneios de futevolei e beach tennis.
 - Lista de torneios fixados (somente os que o admin fixou)
 - Categorias agrupadas por tipo (Feminino, Masculino, Misto)
 - Mostra apenas categorias que possuem sorteio
-- Suporta todos os 4 modos de torneio (somente leitura)
+- Suporta todos os 3 modos de torneio (somente leitura)
+- Placar visivel nos slots do bracket (numero pequeno)
+- Duas chaves espelhadas com final no centro
 - Exibe campeao (Campeas para feminino, Campeoes para masculino/misto)
 
 ### Configuracoes (Admin - acesso via login)
 - Login com nome de usuario simples (sem email)
-- Criar torneios com periodo (data inicio e fim) via popup
+- Criar torneios via popup (nome + data inicio + data fim)
 - Fixar/desfixar torneios no menu de jogos (icone 📌)
 - Soft-delete de torneios (desativa, nao exclui do banco)
 - Categorias vinculadas ao torneio: Feminino, Masculino, Misto
 - Subcategorias: Estreante, Iniciante, Intermediario, Avancado, 30+
 - Cadastro de duplas compacto (tags inline com remocao)
-- 4 modos de sorteio (ver abaixo)
-- Selecao de vencedor por clique (verde com check)
+- 3 modos de sorteio (ver abaixo)
+- Popup para inserir placar (nome das duplas + campos de placar)
+- Vencedor definido automaticamente pelo placar maior
 - Troca de duplas de posicao (botao "Alterar Jogos")
+- Apos sortear: "Visualizar Sorteio" + "Refazer Sorteio" (popup com opcoes)
 - Bracket salvo no Supabase (persiste entre sessoes)
 - Footer escondido automaticamente na tela do bracket
 
@@ -71,21 +75,22 @@ Dupla 3 ─┐           ┌─▶│ Camp B │  │           ┌─ Dupla 7
 Dupla 4 ─┘                              └─ Dupla 8
 ```
 
-### 4. Dupla Eliminacao
-Quem perde na chave principal vai para a repescagem (segunda chance).
-Vencedor da principal vs vencedor da repescagem na Grande Final.
+## Fluxo de Botoes de Sorteio
 
 ```
-CHAVE PRINCIPAL (Winners)     REPESCAGEM (Losers)
-Dupla 1 ─┐                   Perdedores da
-          ├─ Venc ─┐          principal entram
-Dupla 2 ─┘        ├─ Camp    aqui e jogam entre
-Dupla 3 ─┐        │  Princ   si. O vencedor da
-          ├─ Venc ─┘    │     repescagem enfrenta
-Dupla 4 ─┘              │     o campeao da
-                         │     principal na
-              GRANDE FINAL     Grande Final.
-              Camp Princ vs Camp Repesc = CAMPEAO
+Sem sorteio:
+  ┌─────────────────┐  ┌──────────────────┐
+  │ Sorteio Aleatorio│  │ Todos Contra Todos│
+  └─────────────────┘  └──────────────────┘
+  ┌──────────────────────────────────────────┐
+  │           Duas Chaves                    │
+  └──────────────────────────────────────────┘
+
+Com sorteio:
+  ┌──────────────────┐  ┌──────────────────┐
+  │ Visualizar Sorteio│  │  Refazer Sorteio │
+  └──────────────────┘  └──────────────────┘
+         (verde)         (abre popup com 3 opcoes)
 ```
 
 ## Layout
@@ -137,11 +142,10 @@ Executar o arquivo `supabase-schema.sql` no SQL Editor do Supabase para criar to
 | **jogos** | Jogos com placar | categoria_id, dupla_a_id, dupla_b_id, pontos, status, ativo |
 | **brackets** | Dados do torneio (JSON) | categoria_id, dados (jsonb), campeao, ativo |
 
-O campo `brackets.dados` armazena como JSON um dos 4 formatos:
-- Eliminatoria: `BracketRound[]` (array de rodadas)
+O campo `brackets.dados` armazena como JSON um dos 3 formatos:
+- Eliminatoria: `BracketRound[]` (array de rodadas, cada match com scoreA/scoreB)
 - Round-robin: `{ tipo: 'todos_contra_todos', jogos: [...] }`
 - Duas chaves: `{ tipo: 'duas_chaves', chaveA, chaveB, final, ... }`
-- Dupla eliminacao: `{ tipo: 'dupla_eliminacao', winners, losers, grandFinal }`
 
 ### Soft-delete
 Todas as tabelas possuem coluna `ativo` (boolean default true). Ao "excluir", o registro e desativado (ativo=false), nunca removido. Para reativar via SQL:
@@ -180,7 +184,7 @@ public/
 ## Fluxo do Admin
 
 ```
-Login > Torneios (criar/fixar/excluir)
+Login > Torneios (+ Novo Torneio via popup / fixar / excluir)
          |
          v
        Categoria (Feminino / Masculino / Misto)
@@ -191,14 +195,15 @@ Login > Torneios (criar/fixar/excluir)
          v
        Tela unica: Cadastro de Duplas + Sorteio
          |
-         ├─ Sorteio Aleatorio (eliminatoria)
-         ├─ Todos Contra Todos (round-robin)
-         ├─ Dupla Eliminacao (winners + losers + grand final)
-         └─ Duas Chaves (espelhadas com final no centro)
+         ├─ Sem sorteio: 3 botoes (Aleatorio / Todos x Todos / Duas Chaves)
+         └─ Com sorteio: Visualizar Sorteio + Refazer Sorteio (popup)
+                |
+                v
+              Bracket com popup de placar (clique no jogo)
 ```
 
 ## Fluxo dos Jogos (publico)
 
 ```
-Torneios fixados > Categorias com bracket > Visualizacao (somente leitura)
+Torneios fixados > Categorias com bracket > Visualizacao (somente leitura + placar)
 ```
