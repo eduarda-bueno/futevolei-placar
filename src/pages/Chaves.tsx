@@ -23,15 +23,6 @@ interface BracketMatch {
 }
 type BracketRound = BracketMatch[];
 
-function getNomeRodada(totalRounds: number, roundIndex: number): string {
-  const fromFinal = totalRounds - 1 - roundIndex;
-  if (fromFinal === 0) return 'Final';
-  if (fromFinal === 1) return 'Semifinal';
-  if (fromFinal === 2) return 'Quartas de Final';
-  if (fromFinal === 3) return 'Oitavas de Final';
-  return `Rodada ${roundIndex + 1}`;
-}
-
 function slotName(s: BracketSlot): string {
   if (!s) return '—';
   if (s === 'BYE') return 'BYE';
