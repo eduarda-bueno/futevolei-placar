@@ -389,12 +389,29 @@ export function Admin({ onLogout }: AdminProps) {
   }
 
   // ── Duas Chaves ──
+  function nextPow2(n: number): number {
+    let s = 1;
+    while (s < n) s *= 2;
+    return s;
+  }
+
   function gerarDuasChaves() {
     if (duplas.length < 4) return;
     const teams = [...duplas].sort(() => Math.random() - 0.5);
-    const meio = Math.ceil(teams.length / 2);
-    const grupoA = teams.slice(0, meio);
-    const grupoB = teams.slice(meio);
+
+    // Find optimal split that minimizes total BYEs
+    let bestSplit = Math.ceil(teams.length / 2);
+    let bestByes = Infinity;
+    for (let a = 2; a <= teams.length - 2; a++) {
+      const b = teams.length - a;
+      const byes = (nextPow2(a) - a) + (nextPow2(b) - b);
+      if (byes < bestByes) {
+        bestByes = byes;
+        bestSplit = a;
+      }
+    }
+    const grupoA = teams.slice(0, bestSplit);
+    const grupoB = teams.slice(bestSplit);
 
     const chaveA = propagateWinners(buildBracket(grupoA));
     const chaveB = propagateWinners(buildBracket(grupoB));
