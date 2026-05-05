@@ -757,82 +757,56 @@ export function Admin({ onLogout }: AdminProps) {
     <div style={{ flex: 1, paddingTop: 16, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
         {btnVoltar(() => {
-          if (verBracket) {
-            setVerBracket(false);
-          } else {
-            setEtapa('subcategoria');
-          }
+          if (verBracket) setVerBracket(false);
+          else setEtapa('subcategoria');
         })}
         <h1 style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>{categoriaNome}</h1>
         {btnSair}
       </div>
 
-      {/* ── Modo: Cadastro de duplas ── */}
+      {/* ── Cadastro de duplas (sempre visivel, compacto) ── */}
       {!verBracket && (
         <>
-          <h2 style={{ color: '#fff', fontWeight: 600, marginBottom: 12, textAlign: 'center', flexShrink: 0 }}>Cadastrar Duplas</h2>
-
-          <form onSubmit={adicionarDupla} style={{ display: 'flex', gap: 8, marginBottom: 16, flexShrink: 0 }}>
+          <form onSubmit={adicionarDupla} style={{ display: 'flex', gap: 6, marginBottom: 10, flexShrink: 0 }}>
             <input
               type="text"
               placeholder={`Dupla ${duplas.length + 1}`}
               value={novoJogador1}
               onChange={(e) => setNovoJogador1(e.target.value)}
-              style={{ flex: 1, border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '12px 14px', fontSize: 14, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+              style={{ flex: 1, border: '1px solid rgba(255,255,255,0.3)', borderRadius: 10, padding: '8px 12px', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
             />
-            <button type="submit" style={{ padding: '12px 20px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: BLUE, background: '#fff', cursor: 'pointer', flexShrink: 0 }}>
+            <button type="submit" style={{ padding: '8px 14px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: BLUE, background: '#fff', cursor: 'pointer', flexShrink: 0 }}>
               +
             </button>
           </form>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-            {duplas.map((d) => (
-              <div key={d.id} style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 10, padding: '10px 14px' }}>
-                <span style={{ flex: 1, color: BLUE, fontSize: 14, fontWeight: 500 }}>
-                  {d.jogador1}{d.jogador2 ? ` e ${d.jogador2}` : ''}
-                </span>
-                <button onClick={() => excluirDupla(d.id)} style={{ color: '#e55', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-              </div>
-            ))}
-            {duplas.length === 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', marginTop: 12 }}>Nenhuma dupla cadastrada.</p>
-            )}
-          </div>
-
-          {duplas.length >= 2 && !tipoSorteio && (
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button
-                onClick={sortearChave}
-                style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}
-              >
-                Sorteio Eliminatoria
-              </button>
-              <button
-                onClick={gerarRoundRobin}
-                style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}
-              >
-                Todos Contra Todos
-              </button>
+          {duplas.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12, flexShrink: 0 }}>
+              {duplas.map((d) => (
+                <div key={d.id} style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: '5px 10px', gap: 6 }}>
+                  <span style={{ color: '#fff', fontSize: 12 }}>
+                    {d.jogador1}{d.jogador2 ? ` e ${d.jogador2}` : ''}
+                  </span>
+                  <button onClick={() => excluirDupla(d.id)} style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+                </div>
+              ))}
             </div>
           )}
 
-          {tipoSorteio && (
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          {/* Botoes de sorteio */}
+          {duplas.length >= 2 && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginBottom: 12 }}>
               <button
-                onClick={() => setVerBracket(true)}
-                style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}
+                onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; sortearChave(); }}
+                style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}
               >
-                Ver Sorteio
+                {tipoSorteio === 'eliminatorio' ? 'Refazer Eliminatoria' : 'Sorteio Eliminatoria'}
               </button>
               <button
-                onClick={() => {
-                  if (!confirm('Refazer o sorteio? O sorteio atual sera perdido.')) return;
-                  if (tipoSorteio === 'eliminatorio') sortearChave();
-                  else gerarRoundRobin();
-                }}
-                style={{ flex: 1, padding: 14, borderRadius: 12, border: '2px solid rgba(255,255,255,0.3)', fontSize: 14, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer' }}
+                onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; gerarRoundRobin(); }}
+                style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}
               >
-                Refazer Sorteio
+                {tipoSorteio === 'todos_contra_todos' ? 'Refazer Todos x Todos' : 'Todos Contra Todos'}
               </button>
             </div>
           )}
