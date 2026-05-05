@@ -58,6 +58,7 @@ interface DuasChavesData {
   chaveB: BracketRound[];
   campeaoA: string | null;
   campeaoB: string | null;
+  final: BracketMatch | null;
 }
 
 // ── Double Elimination types ──
@@ -573,7 +574,7 @@ export function Admin({ onLogout }: AdminProps) {
     const chaveA = propagateWinners(buildBracket(grupoA));
     const chaveB = propagateWinners(buildBracket(grupoB));
 
-    const data: DuasChavesData = { tipo: 'duas_chaves', chaveA, chaveB, campeaoA: null, campeaoB: null };
+    const data: DuasChavesData = { tipo: 'duas_chaves', chaveA, chaveB, campeaoA: null, campeaoB: null, final: { a: null, b: null, winner: null } };
     setDuasChaves(data);
     setBracket(null);
     setRoundRobin(null);
@@ -616,13 +617,32 @@ export function Admin({ onLogout }: AdminProps) {
       ...duasChaves,
       ...(chave === 'A' ? { chaveA: propagated, campeaoA: champ } : { chaveB: propagated, campeaoB: champ }),
     };
-    setDuasChaves(newData);
 
-    const campGeral = newData.campeaoA && newData.campeaoB
-      ? `${newData.campeaoA} / ${newData.campeaoB}`
-      : null;
+    // Propagar para a final
+    const finalA = newData.chaveA[newData.chaveA.length - 1][0];
+    const finalB = newData.chaveB[newData.chaveB.length - 1][0];
+    const slotA = finalA.winner ? finalA[finalA.winner] : null;
+    const slotB = finalB.winner ? finalB[finalB.winner] : null;
+    newData.final = { a: slotA, b: slotB, winner: newData.final?.winner || null };
+    // Se um dos finalistas mudou, resetar winner da final
+    if (!slotA || !slotB) newData.final.winner = null;
+
+    setDuasChaves(newData);
+    const campGeral = newData.final.winner ? slotName(newData.final[newData.final.winner]) : null;
     setCampeao(campGeral);
     salvarDados(newData, campGeral);
+  }
+
+  function selecionarVencedorFinalDC(side: 'a' | 'b') {
+    if (!duasChaves?.final) return;
+    const f = duasChaves.final;
+    if (!f.a || !f.b || f.a === 'BYE' || f.b === 'BYE') return;
+    const newFinal: BracketMatch = { ...f, winner: f.winner === side ? null : side };
+    const newData: DuasChavesData = { ...duasChaves, final: newFinal };
+    setDuasChaves(newData);
+    const champ = newFinal.winner ? slotName(newFinal[newFinal.winner]) : null;
+    setCampeao(champ);
+    salvarDados(newData, champ);
   }
 
   function selecionarCategoriaPrincipal(nome: string) {
@@ -1347,83 +1367,94 @@ export function Admin({ onLogout }: AdminProps) {
 
       {/* ── Modo: Duas Chaves ── */}
       {duasChaves && verBracket && (() => {
-        const renderBracketChave = (rounds: BracketRound[], chave: 'A' | 'B', campChave: string | null) => (
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>
-              Chave {chave}
-              {campChave && <span style={{ color: '#ffd700', marginLeft: 8 }}>🏆 {campChave}</span>}
-            </h3>
-            <div style={{ overflow: 'auto', paddingBottom: 8 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, padding: '0 8px' }}>
-                {rounds.map((round, rIdx) => {
-                  const SLOT_H = 30;
-                  const MATCH_H = SLOT_H * 2;
-                  const BASE_GAP = 40;
-                  const r0Step = MATCH_H + BASE_GAP;
-                  const stepSize = r0Step * Math.pow(2, rIdx);
-                  const topPad = (r0Step / 2) * (Math.pow(2, rIdx) - 1);
-                  const COL_W = 200;
+        const SH = 30; const MH = SH * 2; const BG = 40;
 
-                  return (
-                    <div key={rIdx} style={{ flexShrink: 0, width: COL_W, position: 'relative' }}>
-                      {round.map((match, mIdx) => {
-                        const aIsBye = match.a === 'BYE';
-                        const bIsBye = match.b === 'BYE';
-                        const canClickA = !aIsBye && !!match.a && !!match.b && match.b !== 'BYE';
-                        const canClickB = !bIsBye && !!match.b && !!match.a && match.a !== 'BYE';
-
-                        return (
-                          <div key={mIdx} style={{ marginTop: mIdx === 0 ? topPad : stepSize - MATCH_H, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
-                            <div
-                              onClick={() => canClickA && selecionarVencedorDC(chave, rIdx, mIdx, 'a')}
-                              style={{ padding: '0 14px', height: SLOT_H, fontSize: 14, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: aIsBye ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canClickA ? 'pointer' : 'default', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}
-                            >
-                              {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(match.a)}
-                            </div>
-                            <div
-                              onClick={() => canClickB && selecionarVencedorDC(chave, rIdx, mIdx, 'b')}
-                              style={{ padding: '0 14px', height: SLOT_H, fontSize: 14, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: bIsBye ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: canClickB ? 'pointer' : 'default', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}
-                            >
-                              {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(match.b)}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {rIdx < rounds.length - 1 && (() => {
-                        const labelH = 0;
-                        const totalH = labelH + topPad + (round.length - 1) * stepSize + SLOT_H * 2;
-                        return (
-                          <svg style={{ position: 'absolute', right: -40, top: 0, width: 40, height: totalH, pointerEvents: 'none' }}>
-                            {round.map((_, mIdx) => {
-                              if (mIdx % 2 !== 0) return null;
-                              const y1 = topPad + mIdx * stepSize + SLOT_H;
-                              const y2 = topPad + (mIdx + 1) * stepSize + SLOT_H;
-                              const mid = (y1 + y2) / 2;
-                              return (
-                                <g key={mIdx}>
-                                  <line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-                                  <line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-                                  <line x1="16" y1={y1} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-                                  <line x1="16" y1={mid} x2="40" y2={mid} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-                                </g>
-                              );
-                            })}
-                          </svg>
-                        );
-                      })()}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        const renderRounds = (rounds: BracketRound[], chave: 'A' | 'B', mirrored: boolean) => (
+          <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, flexDirection: mirrored ? 'row-reverse' : 'row' }}>
+            {rounds.map((round, rIdx) => {
+              const r0 = MH + BG; const ss = r0 * Math.pow(2, rIdx); const tp = (r0 / 2) * (Math.pow(2, rIdx) - 1);
+              return (
+                <div key={rIdx} style={{ flexShrink: 0, width: 160, position: 'relative' }}>
+                  {round.map((match, mIdx) => {
+                    const aB = match.a === 'BYE'; const bB = match.b === 'BYE';
+                    const cA = !aB && !!match.a && !!match.b && !bB;
+                    const cB = !bB && !!match.b && !!match.a && !aB;
+                    return (
+                      <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
+                        <div onClick={() => cA && selecionarVencedorDC(chave, rIdx, mIdx, 'a')} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: aB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: cA ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.a)}
+                        </div>
+                        <div onClick={() => cB && selecionarVencedorDC(chave, rIdx, mIdx, 'b')} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: bB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: cB ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.b)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {rIdx < rounds.length - 1 && (() => {
+                    const th = tp + (round.length - 1) * ss + SH * 2;
+                    return (
+                      <svg style={{ position: 'absolute', [mirrored ? 'left' : 'right']: -40, top: 0, width: 40, height: th, pointerEvents: 'none', transform: mirrored ? 'scaleX(-1)' : 'none' }}>
+                        {round.map((_, mi) => { if (mi % 2 !== 0) return null; const y1 = tp + mi * ss + SH; const y2 = tp + (mi + 1) * ss + SH; const md = (y1 + y2) / 2; return (<g key={mi}><line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={y1} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={md} x2="40" y2={md} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /></g>); })}
+                      </svg>
+                    );
+                  })()}
+                </div>
+              );
+            })}
           </div>
         );
 
+        const f = duasChaves.final;
+        const canF = f && f.a && f.b && f.a !== 'BYE' && f.b !== 'BYE';
+
         return (
           <>
-            {renderBracketChave(duasChaves.chaveA, 'A', duasChaves.campeaoA)}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', marginBottom: 16 }} />
-            {renderBracketChave(duasChaves.chaveB, 'B', duasChaves.campeaoB)}
+            {/* Campeao */}
+            {campeao && (
+              <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+                <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+                <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                  {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+                </div>
+              </div>
+            )}
+
+            {/* Chaves espelhadas */}
+            <div style={{ overflow: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center', minWidth: 'fit-content', padding: '0 8px' }}>
+                {/* Chave A (esquerda → centro) */}
+                <div>
+                  <h3 style={{ color: '#fff', fontSize: 12, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Chave A</h3>
+                  {renderRounds(duasChaves.chaveA, 'A', false)}
+                </div>
+
+                {/* Final no centro */}
+                <div style={{ flexShrink: 0 }}>
+                  <h3 style={{ color: '#ffd700', fontSize: 12, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Final</h3>
+                  <div style={{ borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,215,0,0.4)', background: 'rgba(0,0,0,0.2)', width: 150 }}>
+                    <div
+                      onClick={() => canF && selecionarVencedorFinalDC('a')}
+                      style={{ padding: '0 10px', height: 32, fontSize: 12, fontWeight: f?.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: f?.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canF ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {f?.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(f?.a || null)}
+                    </div>
+                    <div
+                      onClick={() => canF && selecionarVencedorFinalDC('b')}
+                      style={{ padding: '0 10px', height: 32, fontSize: 12, fontWeight: f?.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: f?.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: canF ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {f?.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(f?.b || null)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chave B (direita → centro, espelhada) */}
+                <div>
+                  <h3 style={{ color: '#fff', fontSize: 12, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Chave B</h3>
+                  {renderRounds(duasChaves.chaveB, 'B', true)}
+                </div>
+              </div>
+            </div>
           </>
         );
       })()}
