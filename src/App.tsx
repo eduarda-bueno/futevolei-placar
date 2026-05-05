@@ -59,7 +59,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
             <svg
               viewBox="0 0 400 20"
               preserveAspectRatio="none"
-              style={{ width: '100%', height: 14, flexShrink: 0, display: 'block' }}
+              style={{ width: '100%', height: 8, flexShrink: 0, display: 'block' }}
             >
               <path
                 d="M0,10 C50,0 100,20 150,10 C200,0 250,20 300,10 C350,0 400,20 400,10"
@@ -75,8 +75,8 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                gap: 40,
-                paddingTop: 8,
+                gap: 30,
+                paddingTop: 4,
                 flexShrink: 0,
               }}
             >
@@ -85,13 +85,13 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 style={{
                   color: '#fff',
                   textAlign: 'center',
-                  fontSize: 11,
+                  fontSize: 9,
                   width: 70,
                   cursor: 'pointer',
                   opacity: current === '/' ? 1 : 0.5,
                 }}
               >
-                <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>📋</span>
+                <span style={{ fontSize: 14, display: 'block', marginBottom: 1 }}>📋</span>
                 Placar
               </div>
               <div
@@ -99,13 +99,13 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 style={{
                   color: '#fff',
                   textAlign: 'center',
-                  fontSize: 11,
+                  fontSize: 9,
                   width: 70,
                   cursor: 'pointer',
                   opacity: current === '/chaves' ? 1 : 0.5,
                 }}
               >
-                <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚽</span>
+                <span style={{ fontSize: 14, display: 'block', marginBottom: 1 }}>⚽</span>
                 Jogos
               </div>
               <div
@@ -113,17 +113,17 @@ function AppLayout({ children }: { children: React.ReactNode }) {
                 style={{
                   color: '#fff',
                   textAlign: 'center',
-                  fontSize: 11,
+                  fontSize: 9,
                   width: 70,
                   cursor: 'pointer',
                   opacity: current === '/admin' ? 1 : 0.5,
                 }}
               >
-                <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚙️</span>
+                <span style={{ fontSize: 14, display: 'block', marginBottom: 1 }}>⚙️</span>
                 Config
               </div>
             </div>
-            <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, paddingBottom: 4 }}>
+            <p style={{ textAlign: 'center', fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 4, paddingBottom: 2 }}>
               desenvolvido por Duda
             </p>
           </>
