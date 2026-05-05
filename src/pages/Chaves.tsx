@@ -353,9 +353,6 @@ export function Chaves() {
 
                 return (
                   <div key={rIdx} style={{ flexShrink: 0, width: COL_W, position: 'relative' }}>
-                    <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textAlign: 'center', marginBottom: 16, fontWeight: 700, letterSpacing: 1, lineHeight: '14px' }}>
-                      {getNomeRodada(bracket.length, rIdx)}
-                    </div>
                     {round.map((match, mIdx) => {
                       const aIsBye = match.a === 'BYE';
                       const bIsBye = match.b === 'BYE';
@@ -414,7 +411,7 @@ export function Chaves() {
 
                     {/* Connector lines */}
                     {rIdx < bracket.length - 1 && (() => {
-                      const labelH = 30;
+                      const labelH = 0;
                       const totalH = labelH + topPad + (round.length - 1) * stepSize + MATCH_H;
                       return (
                         <svg
