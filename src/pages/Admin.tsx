@@ -399,13 +399,14 @@ export function Admin({ onLogout }: AdminProps) {
     if (duplas.length < 4) return;
     const teams = [...duplas].sort(() => Math.random() - 0.5);
 
-    // Find optimal split that minimizes total BYEs
+    // Find optimal split that minimizes total BYEs (min 3 per chave)
+    const minPerChave = 3;
     let bestSplit = Math.ceil(teams.length / 2);
     let bestByes = Infinity;
-    for (let a = 2; a <= teams.length - 2; a++) {
+    for (let a = minPerChave; a <= teams.length - minPerChave; a++) {
       const b = teams.length - a;
       const byes = (nextPow2(a) - a) + (nextPow2(b) - b);
-      if (byes < bestByes) {
+      if (byes < bestByes || (byes === bestByes && Math.abs(a - b) < Math.abs(bestSplit - (teams.length - bestSplit)))) {
         bestByes = byes;
         bestSplit = a;
       }
