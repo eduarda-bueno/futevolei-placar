@@ -58,9 +58,10 @@ export function Chaves() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string | null>(null);
 
-  // Bracket / Round Robin
+  // Bracket / Round Robin / Duas Chaves
   const [bracket, setBracket] = useState<BracketRound[] | null>(null);
   const [roundRobin, setRoundRobin] = useState<any>(null);
+  const [duasChaves, setDuasChaves] = useState<any>(null);
   const [campeao, setCampeao] = useState<string | null>(null);
   const [carregandoBracket, setCarregandoBracket] = useState(false);
 
@@ -95,14 +96,21 @@ export function Chaves() {
       if (dados?.tipo === 'todos_contra_todos') {
         setRoundRobin(dados);
         setBracket(null);
+        setDuasChaves(null);
+      } else if (dados?.tipo === 'duas_chaves') {
+        setDuasChaves(dados);
+        setBracket(null);
+        setRoundRobin(null);
       } else {
         setBracket(dados as BracketRound[]);
         setRoundRobin(null);
+        setDuasChaves(null);
       }
       setCampeao(data.campeao || null);
     } else {
       setBracket(null);
       setRoundRobin(null);
+      setDuasChaves(null);
       setCampeao(null);
     }
     setCarregandoBracket(false);
@@ -260,7 +268,7 @@ export function Chaves() {
 
       {carregandoBracket ? (
         <div style={{ textAlign: 'center', padding: 24, color: 'rgba(255,255,255,0.5)' }}>Carregando...</div>
-      ) : !bracket && !roundRobin ? (
+      ) : !bracket && !roundRobin && !duasChaves ? (
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
           Chave ainda nao foi sorteada para esta categoria.
         </p>
@@ -326,7 +334,62 @@ export function Chaves() {
             ))}
           </div>
         </>
-      ) : (
+      ) : duasChaves ? (
+        <>
+          {/* Duas Chaves - somente leitura */}
+          {['A', 'B'].map((ch) => {
+            const rounds = ch === 'A' ? duasChaves.chaveA : duasChaves.chaveB;
+            const campChave = ch === 'A' ? duasChaves.campeaoA : duasChaves.campeaoB;
+            return (
+              <div key={ch} style={{ marginBottom: 20 }}>
+                <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>
+                  Chave {ch}
+                  {campChave && <span style={{ color: '#ffd700', marginLeft: 8 }}>🏆 {campChave}</span>}
+                </h3>
+                <div style={{ overflow: 'auto', paddingBottom: 8 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, padding: '0 8px' }}>
+                    {rounds.map((round: any, rIdx: number) => {
+                      const SLOT_H = 30; const MATCH_H = SLOT_H * 2; const BASE_GAP = 40;
+                      const r0Step = MATCH_H + BASE_GAP;
+                      const stepSize = r0Step * Math.pow(2, rIdx);
+                      const topPad = (r0Step / 2) * (Math.pow(2, rIdx) - 1);
+                      return (
+                        <div key={rIdx} style={{ flexShrink: 0, width: 200, position: 'relative' }}>
+                          {round.map((match: any, mIdx: number) => (
+                            <div key={mIdx} style={{ marginTop: mIdx === 0 ? topPad : stepSize - MATCH_H, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
+                              <div style={{ padding: '0 14px', height: SLOT_H, fontSize: 14, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: match.a === 'BYE' ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(match.a)}
+                              </div>
+                              <div style={{ padding: '0 14px', height: SLOT_H, fontSize: 14, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: match.b === 'BYE' ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(match.b)}
+                              </div>
+                            </div>
+                          ))}
+                          {rIdx < rounds.length - 1 && (() => {
+                            const totalH = topPad + (round.length - 1) * stepSize + SLOT_H * 2;
+                            return (
+                              <svg style={{ position: 'absolute', right: -40, top: 0, width: 40, height: totalH, pointerEvents: 'none' }}>
+                                {round.map((_: any, mIdx: number) => {
+                                  if (mIdx % 2 !== 0) return null;
+                                  const y1 = topPad + mIdx * stepSize + SLOT_H;
+                                  const y2 = topPad + (mIdx + 1) * stepSize + SLOT_H;
+                                  const mid = (y1 + y2) / 2;
+                                  return (<g key={mIdx}><line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={y1} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={mid} x2="40" y2={mid} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /></g>);
+                                })}
+                              </svg>
+                            );
+                          })()}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {ch === 'A' && <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', marginTop: 12 }} />}
+              </div>
+            );
+          })}
+        </>
+      ) : bracket ? (
         <>
           {/* Campeao */}
           {campeao && (
