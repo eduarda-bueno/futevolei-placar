@@ -80,66 +80,63 @@ function buildBracket(duplasList: Dupla[]): BracketRound[] {
     id: d.id,
   }));
 
-  // Next power of 2
-  let size = 1;
-  while (size < teams.length) size *= 2;
-  const byeCount = size - teams.length;
-  const totalMatches = size / 2;
+  // Find previous power of 2
+  let mainSize = 1;
+  while (mainSize * 2 <= teams.length) mainSize *= 2;
 
-  // Strategy: put real matches in the MIDDLE of the bracket,
-  // BYEs at the TOP and BOTTOM (spread evenly from edges)
-  const slots: BracketSlot[] = new Array(size).fill(null);
-
-  // Determine which match positions get BYEs (from edges inward)
-  const byePositions = new Set<number>();
-  let top = 0;
-  let bottom = totalMatches - 1;
-  for (let i = 0; i < byeCount; i++) {
-    if (i % 2 === 0) {
-      byePositions.add(top);
-      top++;
-    } else {
-      byePositions.add(bottom);
-      bottom--;
+  // Perfect power of 2: simple bracket, zero BYEs
+  if (mainSize === teams.length) {
+    const firstRound: BracketRound = [];
+    for (let i = 0; i < teams.length; i += 2) {
+      firstRound.push({ a: teams[i], b: teams[i + 1], winner: null });
     }
+    const rounds: BracketRound[] = [firstRound];
+    let prev = firstRound;
+    while (prev.length > 1) {
+      const next: BracketRound = [];
+      for (let i = 0; i < prev.length; i += 2) next.push({ a: null, b: null, winner: null });
+      rounds.push(next);
+      prev = next;
+    }
+    return rounds;
   }
 
-  // Fill slots: BYE matches get 1 team + BYE, real matches get 2 teams
-  let teamIdx = 0;
-  for (let m = 0; m < totalMatches; m++) {
-    if (byePositions.has(m)) {
-      slots[m * 2] = teams[teamIdx++];
-      slots[m * 2 + 1] = 'BYE';
-    } else {
-      slots[m * 2] = teams[teamIdx++];
-      slots[m * 2 + 1] = teams[teamIdx++];
-    }
+  // Play-in system: extra teams play first, then winners join main bracket
+  const playInCount = teams.length - mainSize;
+  const directCount = teams.length - 2 * playInCount;
+
+  // Direct entry teams (go straight to round 1)
+  const directTeams = teams.slice(0, directCount);
+  // Play-in teams (must play to enter round 1)
+  const playInTeams = teams.slice(directCount);
+
+  // Round 0: play-in matches (all real, zero BYEs)
+  const playInRound: BracketRound = [];
+  for (let i = 0; i < playInTeams.length; i += 2) {
+    playInRound.push({ a: playInTeams[i], b: playInTeams[i + 1], winner: null });
   }
 
-  // Build first round
-  const firstRound: BracketRound = [];
-  for (let i = 0; i < size; i += 2) {
-    const match: BracketMatch = { a: slots[i], b: slots[i + 1], winner: null };
-    if (match.b === 'BYE' && match.a && match.a !== 'BYE') {
-      match.winner = 'a';
-    } else if (match.a === 'BYE' && match.b && match.b !== 'BYE') {
-      match.winner = 'b';
-    }
-    firstRound.push(match);
+  // Round 1: mainSize/2 matches
+  // First matches: pairs of direct teams
+  // Last matches: 1 direct team + null (play-in winner pending)
+  const round1: BracketRound = [];
+  let dIdx = 0;
+  const pairedCount = mainSize / 2 - playInCount;
+  for (let m = 0; m < pairedCount; m++) {
+    round1.push({ a: directTeams[dIdx++], b: directTeams[dIdx++], winner: null });
+  }
+  for (let m = 0; m < playInCount; m++) {
+    round1.push({ a: directTeams[dIdx++], b: null, winner: null });
   }
 
-  const rounds: BracketRound[] = [firstRound];
-  let prevRound = firstRound;
-
-  while (prevRound.length > 1) {
-    const nextRound: BracketRound = [];
-    for (let i = 0; i < prevRound.length; i += 2) {
-      const winnerA = prevRound[i].winner ? prevRound[i][prevRound[i].winner!] : null;
-      const winnerB = prevRound[i + 1]?.winner ? prevRound[i + 1][prevRound[i + 1].winner!] : null;
-      nextRound.push({ a: winnerA, b: winnerB, winner: null });
-    }
-    rounds.push(nextRound);
-    prevRound = nextRound;
+  // Build all rounds
+  const rounds: BracketRound[] = [playInRound, round1];
+  let prev = round1;
+  while (prev.length > 1) {
+    const next: BracketRound = [];
+    for (let i = 0; i < prev.length; i += 2) next.push({ a: null, b: null, winner: null });
+    rounds.push(next);
+    prev = next;
   }
 
   return rounds;
@@ -149,14 +146,29 @@ function propagateWinners(rounds: BracketRound[]): BracketRound[] {
   const updated = rounds.map((r) => r.map((m) => ({ ...m })));
 
   for (let r = 1; r < updated.length; r++) {
-    for (let m = 0; m < updated[r].length; m++) {
-      const srcA = updated[r - 1][m * 2];
-      const srcB = updated[r - 1][m * 2 + 1];
-      updated[r][m].a = srcA?.winner ? srcA[srcA.winner] : null;
-      updated[r][m].b = srcB?.winner ? srcB[srcB.winner] : null;
-      // If a slot becomes null and there was a winner, clear it
-      if (!updated[r][m].a || !updated[r][m].b) {
-        updated[r][m].winner = null;
+    const prevLen = updated[r - 1].length;
+    const currLen = updated[r].length;
+
+    if (prevLen < currLen || prevLen === currLen) {
+      // Play-in → round 1: play-in winners fill null slots in round 1
+      // Find null slots in current round and fill from prev winners
+      let pIdx = 0;
+      for (let m = 0; m < currLen; m++) {
+        if (updated[r][m].b === null && pIdx < prevLen) {
+          const src = updated[r - 1][pIdx];
+          if (src?.winner) {
+            updated[r][m].b = src[src.winner];
+          }
+          pIdx++;
+        }
+      }
+    } else {
+      // Normal round: pairs feed into next
+      for (let m = 0; m < currLen; m++) {
+        const srcA = updated[r - 1][m * 2];
+        const srcB = updated[r - 1][m * 2 + 1];
+        if (srcA?.winner) updated[r][m].a = srcA[srcA.winner];
+        if (srcB?.winner) updated[r][m].b = srcB[srcB.winner];
       }
     }
   }
