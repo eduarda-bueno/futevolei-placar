@@ -75,8 +75,15 @@ export function Chaves() {
   }
 
   async function carregarCategorias(torneioId: string) {
-    const { data } = await supabase.from('categorias').select('*').eq('torneio_id', torneioId).eq('ativo', true).order('nome');
-    setCategorias(data || []);
+    const { data: allCats } = await supabase.from('categorias').select('*').eq('torneio_id', torneioId).eq('ativo', true).order('nome');
+    if (!allCats || allCats.length === 0) {
+      setCategorias([]);
+      return;
+    }
+    // Filtrar apenas categorias que tem bracket
+    const { data: brackets } = await supabase.from('brackets').select('categoria_id').eq('ativo', true);
+    const catIdsComBracket = new Set((brackets || []).map((b: any) => b.categoria_id));
+    setCategorias(allCats.filter((c) => catIdsComBracket.has(c.id)));
   }
 
   async function carregarBracket(categoriaId: string) {
