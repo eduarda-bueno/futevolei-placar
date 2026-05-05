@@ -57,6 +57,54 @@ export function Chaves() {
   const [duasChaves, setDuasChaves] = useState<any>(null);
   const [campeao, setCampeao] = useState<string | null>(null);
   const [carregandoBracket, setCarregandoBracket] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [statsSort, setStatsSort] = useState<'v' | 'd' | 'pts'>('v');
+
+  function getStatsFromRounds(rounds: BracketRound[]): { nome: string; v: number; d: number; pts: number; ptsSof: number }[] {
+    const stats: Record<string, { nome: string; v: number; d: number; pts: number; ptsSof: number }> = {};
+    for (const round of rounds) {
+      for (const match of round) {
+        if (!match.a || !match.b || match.a === 'BYE' || match.b === 'BYE' || !match.winner) continue;
+        const nA = slotName(match.a); const nB = slotName(match.b);
+        const idA = typeof match.a === 'object' ? match.a.id : ''; const idB = typeof match.b === 'object' ? match.b.id : '';
+        if (!stats[idA]) stats[idA] = { nome: nA, v: 0, d: 0, pts: 0, ptsSof: 0 };
+        if (!stats[idB]) stats[idB] = { nome: nB, v: 0, d: 0, pts: 0, ptsSof: 0 };
+        stats[idA].pts += match.scoreA || 0; stats[idA].ptsSof += match.scoreB || 0;
+        stats[idB].pts += match.scoreB || 0; stats[idB].ptsSof += match.scoreA || 0;
+        if (match.winner === 'a') { stats[idA].v++; stats[idB].d++; } else { stats[idB].v++; stats[idA].d++; }
+      }
+    }
+    return Object.values(stats);
+  }
+
+  function getAllStatsPublic() {
+    let all: { nome: string; v: number; d: number; pts: number; ptsSof: number }[] = [];
+    if (bracket) all = getStatsFromRounds(bracket);
+    else if (duasChaves) {
+      const merged: Record<string, typeof all[0]> = {};
+      for (const s of [...getStatsFromRounds(duasChaves.chaveA), ...getStatsFromRounds(duasChaves.chaveB)]) {
+        if (!merged[s.nome]) merged[s.nome] = { ...s };
+        else { merged[s.nome].v += s.v; merged[s.nome].d += s.d; merged[s.nome].pts += s.pts; merged[s.nome].ptsSof += s.ptsSof; }
+      }
+      all = Object.values(merged);
+    } else if (roundRobin) {
+      const stats: Record<string, typeof all[0]> = {};
+      for (const j of roundRobin.jogos) {
+        if (!stats[j.a.id]) stats[j.a.id] = { nome: j.a.nome, v: 0, d: 0, pts: 0, ptsSof: 0 };
+        if (!stats[j.b.id]) stats[j.b.id] = { nome: j.b.nome, v: 0, d: 0, pts: 0, ptsSof: 0 };
+        if (j.winner) {
+          stats[j.a.id].pts += j.scoreA || 0; stats[j.a.id].ptsSof += j.scoreB || 0;
+          stats[j.b.id].pts += j.scoreB || 0; stats[j.b.id].ptsSof += j.scoreA || 0;
+          if (j.winner === 'a') { stats[j.a.id].v++; stats[j.b.id].d++; } else { stats[j.b.id].v++; stats[j.a.id].d++; }
+        }
+      }
+      all = Object.values(stats);
+    }
+    if (statsSort === 'v') all.sort((a, b) => b.v - a.v || b.pts - a.pts);
+    else if (statsSort === 'd') all.sort((a, b) => a.d - b.d || b.v - a.v);
+    else all.sort((a, b) => b.pts - a.pts || b.v - a.v);
+    return all;
+  }
 
   useEffect(() => {
     carregarTorneios();
@@ -341,10 +389,10 @@ export function Chaves() {
                     {round.map((match: any, mIdx: number) => (
                       <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
                         <div style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: match.a === 'BYE' ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.a)}
+                          {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.a)}</span>{match.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreA}</span>}
                         </div>
                         <div style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: match.b === 'BYE' ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.b)}
+                          {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.b)}</span>{match.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreB}</span>}
                         </div>
                       </div>
                     ))}
@@ -521,6 +569,46 @@ export function Chaves() {
           </div>}
         </>
       ) : null}
+
+      {/* Botao Estatisticas - aparece em todos os modos */}
+      {(bracket || duasChaves || roundRobin) && (
+        <>
+          <button
+            onClick={() => setShowStats(true)}
+            style={{ width: '100%', padding: 12, borderRadius: 12, border: '2px solid rgba(255,255,255,0.3)', fontSize: 13, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer', marginTop: 12, flexShrink: 0 }}
+          >
+            Estatisticas
+          </button>
+
+          {showStats && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowStats(false)}>
+              <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '20px 16px', maxWidth: 420, width: '95%', maxHeight: '80vh', overflow: 'auto' }}>
+                <h3 style={{ color: '#113776', fontSize: 16, fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>Estatisticas</h3>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, justifyContent: 'center' }}>
+                  {(['v', 'd', 'pts'] as const).map((s) => (
+                    <button key={s} onClick={() => setStatsSort(s)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 'bold', cursor: 'pointer', background: statsSort === s ? '#113776' : '#eee', color: statsSort === s ? '#fff' : '#666' }}>
+                      {s === 'v' ? 'Vitorias' : s === 'd' ? 'Derrotas' : 'Pontos'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', padding: '8px 10px', background: '#f5f5f5', fontSize: 11, fontWeight: 600, color: '#999' }}>
+                    <span style={{ width: 22 }}>#</span><span style={{ flex: 1 }}>Dupla</span><span style={{ width: 28, textAlign: 'center' }}>V</span><span style={{ width: 28, textAlign: 'center' }}>D</span><span style={{ width: 36, textAlign: 'center' }}>Pts</span><span style={{ width: 36, textAlign: 'center' }}>Sof</span>
+                  </div>
+                  {getAllStatsPublic().map((s, i) => (
+                    <div key={i} style={{ display: 'flex', padding: '8px 10px', borderTop: '1px solid #f0f0f0', fontSize: 13, color: '#113776', fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.08)' : '#fff' }}>
+                      <span style={{ width: 22, color: '#999' }}>{i + 1}</span><span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nome}</span><span style={{ width: 28, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span><span style={{ width: 28, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span><span style={{ width: 36, textAlign: 'center' }}>{s.pts}</span><span style={{ width: 36, textAlign: 'center', color: '#999' }}>{s.ptsSof}</span>
+                    </div>
+                  ))}
+                  {getAllStatsPublic().length === 0 && (
+                    <div style={{ padding: 16, textAlign: 'center', color: '#999', fontSize: 13 }}>Nenhum jogo com placar.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
