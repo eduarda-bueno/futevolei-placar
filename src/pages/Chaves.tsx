@@ -403,7 +403,7 @@ export function Chaves() {
                       const th = tp + (round.length - 1) * ss + SH * 2;
                       return (
                         <svg style={{ position: 'absolute', [mirrored ? 'left' : 'right']: -40, top: 0, width: 40, height: th, pointerEvents: 'none', transform: mirrored ? 'scaleX(-1)' : 'none' }}>
-                          {round.map((_: any, mi: number) => { if (mi % 2 !== 0) return null; const y1 = tp + mi * ss + SH; const y2 = tp + (mi + 1) * ss + SH; const md = (y1 + y2) / 2; return (<g key={mi}><line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={y1} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={md} x2="40" y2={md} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /></g>); })}
+                          {round.map((rm: any, mi: number) => { if (mi % 2 !== 0) return null; const rm2 = round[mi+1]; const b1 = rm.a==='BYE'||rm.b==='BYE'; const b2 = rm2&&(rm2.a==='BYE'||rm2.b==='BYE'); if(b1&&b2) return null; const y1 = tp + mi * ss + SH; const y2 = tp + (mi + 1) * ss + SH; const md = (y1 + y2) / 2; return (<g key={mi}>{!b1&&<line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}{!b2&&<line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}<line x1="16" y1={b1?md:y1} x2="16" y2={b2?md:y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={md} x2="40" y2={md} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /></g>); })}
                         </svg>
                       );
                     })()}
@@ -551,16 +551,20 @@ export function Chaves() {
                             pointerEvents: 'none',
                           }}
                         >
-                          {round.map((_, mIdx) => {
+                          {round.map((m1, mIdx) => {
                             if (mIdx % 2 !== 0) return null;
+                            const m2 = round[mIdx + 1];
+                            const m1Bye = m1.a === 'BYE' || m1.b === 'BYE';
+                            const m2Bye = m2 && (m2.a === 'BYE' || m2.b === 'BYE');
+                            if (m1Bye && m2Bye) return null;
                             const y1 = labelH + topPad + mIdx * stepSize + MATCH_H / 2;
                             const y2 = labelH + topPad + (mIdx + 1) * stepSize + MATCH_H / 2;
                             const mid = (y1 + y2) / 2;
                             return (
                               <g key={mIdx}>
-                                <line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-                                <line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-                                <line x1="16" y1={y1} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+                                {!m1Bye && <line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}
+                                {!m2Bye && <line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}
+                                <line x1="16" y1={m1Bye ? mid : y1} x2="16" y2={m2Bye ? mid : y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
                                 <line x1="16" y1={mid} x2="40" y2={mid} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
                               </g>
                             );
