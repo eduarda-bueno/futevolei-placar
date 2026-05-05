@@ -20,6 +20,8 @@ interface BracketMatch {
   a: BracketSlot;
   b: BracketSlot;
   winner: 'a' | 'b' | null;
+  scoreA?: number | null;
+  scoreB?: number | null;
 }
 type BracketRound = BracketMatch[];
 
@@ -454,7 +456,8 @@ export function Chaves() {
                             }}
                           >
                             {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}
-                            {slotName(match.a)}
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.a)}</span>
+                            {match.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreA}</span>}
                           </div>
                           <div
                             style={{
@@ -472,7 +475,8 @@ export function Chaves() {
                             }}
                           >
                             {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}
-                            {slotName(match.b)}
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.b)}</span>
+                            {match.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreB}</span>}
                           </div>
                         </div>
                       );

@@ -37,6 +37,8 @@ interface BracketMatch {
   a: BracketSlot;
   b: BracketSlot;
   winner: 'a' | 'b' | null;
+  scoreA?: number | null;
+  scoreB?: number | null;
 }
 type BracketRound = BracketMatch[];
 
@@ -195,6 +197,9 @@ export function Admin({ onLogout }: AdminProps) {
   const [trocaSelecionada, setTrocaSelecionada] = useState<{ round: number; match: number; side: 'a' | 'b' } | null>(null);
   const [showFixarPopup, setShowFixarPopup] = useState(false);
   const [verBracket, setVerBracket] = useState(false);
+  const [showPlacar, setShowPlacar] = useState<{ rIdx: number; mIdx: number; section?: string } | null>(null);
+  const [placarA, setPlacarA] = useState('');
+  const [placarB, setPlacarB] = useState('');
   const [roundRobin, setRoundRobin] = useState<RoundRobinData | null>(null);
   const [duasChaves, setDuasChaves] = useState<DuasChavesData | null>(null);
   const [tipoSorteio, setTipoSorteio] = useState<TipoTorneio | null>(null);
@@ -548,31 +553,36 @@ export function Admin({ onLogout }: AdminProps) {
     salvarDados(propagated, null);
   }
 
-  function selecionarVencedor(roundIdx: number, matchIdx: number, side: 'a' | 'b') {
+  function abrirPlacar(roundIdx: number, matchIdx: number) {
     if (!bracket) return;
     const match = bracket[roundIdx][matchIdx];
-    const slot = match[side];
-    if (!slot || slot === 'BYE') return;
+    if (!match.a || !match.b || match.a === 'BYE' || match.b === 'BYE') return;
+    setPlacarA(match.scoreA != null ? String(match.scoreA) : '');
+    setPlacarB(match.scoreB != null ? String(match.scoreB) : '');
+    setShowPlacar({ rIdx: roundIdx, mIdx: matchIdx });
+  }
+
+  function confirmarPlacar() {
+    if (!bracket || !showPlacar) return;
+    const { rIdx, mIdx } = showPlacar;
+    const sA = parseInt(placarA) || 0;
+    const sB = parseInt(placarB) || 0;
+    const winner: 'a' | 'b' = sA >= sB ? 'a' : 'b';
 
     const updated = bracket.map((r) => r.map((m) => ({ ...m })));
+    updated[rIdx][mIdx].scoreA = sA;
+    updated[rIdx][mIdx].scoreB = sB;
+    updated[rIdx][mIdx].winner = winner;
 
-    // If clicking the same winner, deselect
-    if (updated[roundIdx][matchIdx].winner === side) {
-      updated[roundIdx][matchIdx].winner = null;
-    } else {
-      updated[roundIdx][matchIdx].winner = side;
-    }
-
-    // Clear all subsequent rounds from this match forward
-    for (let r = roundIdx + 1; r < updated.length; r++) {
+    for (let r = rIdx + 1; r < updated.length; r++) {
       for (let m = 0; m < updated[r].length; m++) {
         updated[r][m].winner = null;
+        updated[r][m].scoreA = null;
+        updated[r][m].scoreB = null;
       }
     }
 
     const propagated = propagateWinners(updated);
-
-    // Check champion
     const finalMatch = propagated[propagated.length - 1][0];
     let champ: string | null = null;
     if (finalMatch.winner) {
@@ -582,6 +592,30 @@ export function Admin({ onLogout }: AdminProps) {
     setCampeao(champ);
     setBracket(propagated);
     salvarDados(propagated, champ);
+    setShowPlacar(null);
+  }
+
+  function limparPlacar() {
+    if (!bracket || !showPlacar) return;
+    const { rIdx, mIdx } = showPlacar;
+    const updated = bracket.map((r) => r.map((m) => ({ ...m })));
+    updated[rIdx][mIdx].scoreA = null;
+    updated[rIdx][mIdx].scoreB = null;
+    updated[rIdx][mIdx].winner = null;
+
+    for (let r = rIdx + 1; r < updated.length; r++) {
+      for (let m = 0; m < updated[r].length; m++) {
+        updated[r][m].winner = null;
+        updated[r][m].scoreA = null;
+        updated[r][m].scoreB = null;
+      }
+    }
+
+    const propagated = propagateWinners(updated);
+    setCampeao(null);
+    setBracket(propagated);
+    salvarDados(propagated, null);
+    setShowPlacar(null);
   }
 
   function trocarDuplas(r1: number, m1: number, s1: 'a' | 'b', r2: number, m2: number, s2: 'a' | 'b') {
@@ -984,7 +1018,7 @@ export function Admin({ onLogout }: AdminProps) {
                           }}
                         >
                           <div
-                            onClick={() => modoTroca ? (canSwapA && handleSlotClickTroca(rIdx, mIdx, 'a')) : (canClickA && selecionarVencedor(rIdx, mIdx, 'a'))}
+                            onClick={() => modoTroca ? (canSwapA && handleSlotClickTroca(rIdx, mIdx, 'a')) : (canClickA && abrirPlacar(rIdx, mIdx))}
                             style={{
                               padding: '0 14px',
                               height: SLOT_H,
@@ -1003,10 +1037,11 @@ export function Admin({ onLogout }: AdminProps) {
                           >
                             {!modoTroca && match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}
                             {isSwapSelA && <span style={{ marginRight: 6 }}>↔</span>}
-                            {slotName(match.a)}
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.a)}</span>
+                            {match.scoreA != null && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreA}</span>}
                           </div>
                           <div
-                            onClick={() => modoTroca ? (canSwapB && handleSlotClickTroca(rIdx, mIdx, 'b')) : (canClickB && selecionarVencedor(rIdx, mIdx, 'b'))}
+                            onClick={() => modoTroca ? (canSwapB && handleSlotClickTroca(rIdx, mIdx, 'b')) : (canClickB && abrirPlacar(rIdx, mIdx))}
                             style={{
                               padding: '0 14px',
                               height: SLOT_H,
@@ -1024,7 +1059,8 @@ export function Admin({ onLogout }: AdminProps) {
                           >
                             {!modoTroca && match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}
                             {isSwapSelB && <span style={{ marginRight: 6 }}>↔</span>}
-                            {slotName(match.b)}
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.b)}</span>
+                            {match.scoreB != null && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreB}</span>}
                           </div>
                         </div>
                       );
@@ -1089,6 +1125,37 @@ export function Admin({ onLogout }: AdminProps) {
             {modoTroca ? 'Cancelar Troca' : 'Alterar Jogos'}
           </button>
 
+          {/* Popup Placar */}
+          {showPlacar && bracket && (() => {
+            const m = bracket[showPlacar.rIdx][showPlacar.mIdx];
+            return (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowPlacar(null)}>
+                <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 300, width: '90%', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{slotName(m.a)}</div>
+                      <input type="number" min="0" value={placarA} onChange={(e) => setPlacarA(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                    </div>
+                    <span style={{ color: '#999', fontSize: 14, fontWeight: 'bold' }}>x</span>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{slotName(m.b)}</div>
+                      <input type="number" min="0" value={placarB} onChange={(e) => setPlacarB(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={confirmarPlacar} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}>
+                      Confirmar
+                    </button>
+                    {m.winner && (
+                      <button onClick={limparPlacar} style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #e74c3c', fontSize: 12, fontWeight: 'bold', color: '#e74c3c', background: '#fff', cursor: 'pointer' }}>
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
 
