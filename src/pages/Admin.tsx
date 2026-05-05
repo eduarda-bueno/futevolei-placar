@@ -60,7 +60,15 @@ interface DuasChavesData {
   campeaoB: string | null;
 }
 
-type TipoTorneio = 'eliminatorio' | 'todos_contra_todos' | 'duas_chaves';
+// ── Double Elimination types ──
+interface DoubleElimData {
+  tipo: 'dupla_eliminacao';
+  winners: BracketRound[];
+  losers: BracketRound[];
+  grandFinal: BracketMatch | null;
+}
+
+type TipoTorneio = 'eliminatorio' | 'todos_contra_todos' | 'duas_chaves' | 'dupla_eliminacao';
 
 function getNomeRodada(totalRounds: number, roundIndex: number): string {
   const fromFinal = totalRounds - 1 - roundIndex;
@@ -205,13 +213,14 @@ export function Admin({ onLogout }: AdminProps) {
   const [verBracket, setVerBracket] = useState(false);
   const [roundRobin, setRoundRobin] = useState<RoundRobinData | null>(null);
   const [duasChaves, setDuasChaves] = useState<DuasChavesData | null>(null);
+  const [doubleElim, setDoubleElim] = useState<DoubleElimData | null>(null);
   const [tipoSorteio, setTipoSorteio] = useState<TipoTorneio | null>(null);
   const { setHideFooter } = useFooter();
 
   useEffect(() => {
-    setHideFooter(verBracket && !!(bracket || roundRobin || duasChaves));
+    setHideFooter(verBracket && !!(bracket || roundRobin || duasChaves || doubleElim));
     return () => setHideFooter(false);
-  }, [verBracket, bracket, roundRobin, duasChaves]);
+  }, [verBracket, bracket, roundRobin, duasChaves, doubleElim]);
 
   useEffect(() => {
     carregarTorneios();
@@ -291,11 +300,19 @@ export function Admin({ onLogout }: AdminProps) {
         setDuasChaves(dados as DuasChavesData);
         setBracket(null);
         setRoundRobin(null);
+        setDoubleElim(null);
         setTipoSorteio('duas_chaves');
+      } else if (dados?.tipo === 'dupla_eliminacao') {
+        setDoubleElim(dados as DoubleElimData);
+        setBracket(null);
+        setRoundRobin(null);
+        setDuasChaves(null);
+        setTipoSorteio('dupla_eliminacao');
       } else {
         setBracket(dados as BracketRound[]);
         setRoundRobin(null);
         setDuasChaves(null);
+        setDoubleElim(null);
         setTipoSorteio('eliminatorio');
       }
       setCampeao(data.campeao || null);
@@ -351,6 +368,7 @@ export function Admin({ onLogout }: AdminProps) {
     setRoundRobin(data);
     setBracket(null);
     setDuasChaves(null);
+    setDoubleElim(null);
     setTipoSorteio('todos_contra_todos');
     setCampeao(null);
     setVerBracket(true);
@@ -395,6 +413,164 @@ export function Admin({ onLogout }: AdminProps) {
     return Object.values(stats).sort((a, b) => b.v - a.v);
   }
 
+  // ── Dupla Eliminação ──
+  function buildLosersRounds(winnersRounds: BracketRound[]): BracketRound[] {
+    // Losers bracket tem ~2x rodadas do winners (menos a final)
+    // Rodada ímpar: recebe perdedores do winners
+    // Rodada par: jogo interno entre losers
+    const numWinnersRounds = winnersRounds.length;
+    const losersRounds: BracketRound[] = [];
+
+    for (let wr = 0; wr < numWinnersRounds - 1; wr++) {
+      // Rodada que recebe perdedores do winners round wr
+      const numMatches = Math.ceil(winnersRounds[wr].length / 2);
+      const dropRound: BracketRound = [];
+      for (let i = 0; i < numMatches; i++) {
+        dropRound.push({ a: null, b: null, winner: null });
+      }
+      losersRounds.push(dropRound);
+
+      // Rodada interna (losers vs losers)
+      if (numMatches > 1) {
+        const internalRound: BracketRound = [];
+        for (let i = 0; i < Math.ceil(numMatches / 2); i++) {
+          internalRound.push({ a: null, b: null, winner: null });
+        }
+        losersRounds.push(internalRound);
+      }
+    }
+
+    return losersRounds;
+  }
+
+  function gerarDuplaEliminacao() {
+    if (duplas.length < 3) return;
+    const winners = propagateWinners(buildBracket(duplas));
+    const losers = buildLosersRounds(winners);
+
+    // Propagar BYE losers da primeira rodada winners
+    for (let i = 0; i < winners[0].length; i++) {
+      const match = winners[0][i];
+      if (match.winner && (match.a === 'BYE' || match.b === 'BYE')) {
+        // O perdedor de um BYE match não existe, então não vai pro losers
+        continue;
+      }
+    }
+
+    const grandFinal: BracketMatch = { a: null, b: null, winner: null };
+    const data: DoubleElimData = { tipo: 'dupla_eliminacao', winners, losers, grandFinal };
+    setDoubleElim(data);
+    setBracket(null);
+    setRoundRobin(null);
+    setDuasChaves(null);
+    setTipoSorteio('dupla_eliminacao');
+    setCampeao(null);
+    setVerBracket(true);
+    salvarDados(data, null);
+  }
+
+  function getLoser(match: BracketMatch): BracketSlot {
+    if (!match.winner) return null;
+    return match.winner === 'a' ? match.b : match.a;
+  }
+
+  function propagateDoubleElim(de: DoubleElimData): DoubleElimData {
+    const w = de.winners.map((r) => r.map((m) => ({ ...m })));
+    const l = de.losers.map((r) => r.map((m) => ({ ...m })));
+    let gf = { ...de.grandFinal! };
+
+    // Propagar winners
+    for (let r = 1; r < w.length; r++) {
+      for (let m = 0; m < w[r].length; m++) {
+        const srcA = w[r - 1][m * 2];
+        const srcB = w[r - 1][m * 2 + 1];
+        w[r][m].a = srcA?.winner ? srcA[srcA.winner] : null;
+        w[r][m].b = srcB?.winner ? srcB[srcB.winner] : null;
+      }
+    }
+
+    // Enviar perdedores do winners para o losers
+    let losersIdx = 0;
+    for (let wr = 0; wr < w.length - 1 && losersIdx < l.length; wr++) {
+      const dropRound = l[losersIdx];
+      let dropIdx = 0;
+      for (let wm = 0; wm < w[wr].length && dropIdx < dropRound.length; wm++) {
+        const loser = getLoser(w[wr][wm]);
+        if (loser && loser !== 'BYE') {
+          if (!dropRound[dropIdx].a) dropRound[dropIdx].a = loser;
+          else { dropRound[dropIdx].b = loser; dropIdx++; }
+        }
+      }
+      losersIdx += 2; // skip internal round
+    }
+
+    // Propagar losers internos
+    for (let r = 1; r < l.length; r++) {
+      if (r % 2 === 1) {
+        // Internal round: gets winners from previous losers round
+        for (let m = 0; m < l[r].length; m++) {
+          const srcA = l[r - 1][m * 2];
+          const srcB = l[r - 1][m * 2 + 1];
+          if (srcA?.winner) l[r][m].a = srcA[srcA.winner];
+          if (srcB?.winner) l[r][m].b = srcB[srcB.winner];
+        }
+      }
+    }
+
+    // Grand Final: winner do winners bracket vs winner do losers bracket
+    const winnersFinal = w[w.length - 1][0];
+    const losersFinal = l.length > 0 ? l[l.length - 1][0] : null;
+    if (winnersFinal?.winner) gf.a = winnersFinal[winnersFinal.winner];
+    if (losersFinal?.winner) gf.b = losersFinal[losersFinal.winner];
+
+    return { tipo: 'dupla_eliminacao', winners: w, losers: l, grandFinal: gf };
+  }
+
+  function selecionarVencedorDE(section: 'winners' | 'losers' | 'final', roundIdx: number, matchIdx: number, side: 'a' | 'b') {
+    if (!doubleElim) return;
+    const updated = {
+      ...doubleElim,
+      winners: doubleElim.winners.map((r) => r.map((m) => ({ ...m }))),
+      losers: doubleElim.losers.map((r) => r.map((m) => ({ ...m }))),
+      grandFinal: { ...doubleElim.grandFinal! },
+    };
+
+    if (section === 'final') {
+      const gf = updated.grandFinal;
+      if (!gf || !gf.a || !gf.b || gf.a === 'BYE' || gf.b === 'BYE') return;
+      gf.winner = gf.winner === side ? null : side;
+      const champ = gf.winner ? slotName(gf[gf.winner]) : null;
+      setCampeao(champ);
+      setDoubleElim(updated);
+      salvarDados(updated, champ);
+      return;
+    }
+
+    const rounds = section === 'winners' ? updated.winners : updated.losers;
+    const match = rounds[roundIdx][matchIdx];
+    if (!match.a || !match.b || match.a === 'BYE' || match.b === 'BYE') return;
+
+    match.winner = match.winner === side ? null : side;
+
+    // Clear downstream
+    if (section === 'winners') {
+      for (let r = roundIdx + 1; r < rounds.length; r++)
+        for (const m of rounds[r]) m.winner = null;
+      // Also clear losers and grand final
+      for (const r of updated.losers) for (const m of r) m.winner = null;
+      updated.grandFinal!.winner = null;
+    } else {
+      for (let r = roundIdx + 1; r < rounds.length; r++)
+        for (const m of rounds[r]) m.winner = null;
+      updated.grandFinal!.winner = null;
+    }
+
+    const propagated = propagateDoubleElim(updated);
+    setCampeao(null);
+    setDoubleElim(propagated);
+    salvarDados(propagated, null);
+  }
+
   // ── Duas Chaves ──
   function gerarDuasChaves() {
     if (duplas.length < 4) return;
@@ -410,6 +586,7 @@ export function Admin({ onLogout }: AdminProps) {
     setDuasChaves(data);
     setBracket(null);
     setRoundRobin(null);
+    setDoubleElim(null);
     setTipoSorteio('duas_chaves');
     setCampeao(null);
     setVerBracket(true);
@@ -528,6 +705,7 @@ export function Admin({ onLogout }: AdminProps) {
     setBracket(propagated);
     setRoundRobin(null);
     setDuasChaves(null);
+    setDoubleElim(null);
     setTipoSorteio('eliminatorio');
     setCampeao(null);
     setVerBracket(true);
@@ -891,14 +1069,23 @@ export function Admin({ onLogout }: AdminProps) {
                   Todos Contra Todos
                 </button>
               </div>
-              {duplas.length >= 4 && (
+              <div style={{ display: 'flex', gap: 6 }}>
                 <button
-                  onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; gerarDuasChaves(); }}
-                  style={{ width: '100%', padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}
+                  onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; gerarDuplaEliminacao(); }}
+                  disabled={duplas.length < 3}
+                  style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: duplas.length < 3 ? '#666' : '#e74c3c', cursor: duplas.length < 3 ? 'default' : 'pointer' }}
                 >
-                  Duas Chaves
+                  Dupla Eliminacao
                 </button>
-              )}
+                {duplas.length >= 4 && (
+                  <button
+                    onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; gerarDuasChaves(); }}
+                    style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}
+                  >
+                    Duas Chaves
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </>
@@ -1246,6 +1433,114 @@ export function Admin({ onLogout }: AdminProps) {
             {renderBracketChave(duasChaves.chaveA, 'A', duasChaves.campeaoA)}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', marginBottom: 16 }} />
             {renderBracketChave(duasChaves.chaveB, 'B', duasChaves.campeaoB)}
+          </>
+        );
+      })()}
+
+      {/* ── Modo: Dupla Eliminacao ── */}
+      {doubleElim && verBracket && (() => {
+        const renderDERounds = (rounds: BracketRound[], section: 'winners' | 'losers') => (
+          <div style={{ overflow: 'auto', paddingBottom: 8 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, padding: '0 8px' }}>
+              {rounds.map((round, rIdx) => {
+                const SLOT_H = 30;
+                const MATCH_H = SLOT_H * 2;
+                const BASE_GAP = 30;
+                const r0Step = MATCH_H + BASE_GAP;
+                const stepSize = r0Step * Math.pow(2, rIdx);
+                const topPad = (r0Step / 2) * (Math.pow(2, rIdx) - 1);
+
+                return (
+                  <div key={rIdx} style={{ flexShrink: 0, width: 180, position: 'relative' }}>
+                    {round.map((match, mIdx) => {
+                      const aIsBye = match.a === 'BYE';
+                      const bIsBye = match.b === 'BYE';
+                      const canClick = !!match.a && !!match.b && match.a !== 'BYE' && match.b !== 'BYE';
+
+                      return (
+                        <div key={mIdx} style={{ marginTop: mIdx === 0 ? topPad : stepSize - MATCH_H, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
+                          <div
+                            onClick={() => canClick && selecionarVencedorDE(section, rIdx, mIdx, 'a')}
+                            style={{ padding: '0 12px', height: SLOT_H, fontSize: 13, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: aIsBye ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          >
+                            {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(match.a)}
+                          </div>
+                          <div
+                            onClick={() => canClick && selecionarVencedorDE(section, rIdx, mIdx, 'b')}
+                            style={{ padding: '0 12px', height: SLOT_H, fontSize: 13, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: bIsBye ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: canClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          >
+                            {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(match.b)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {rIdx < rounds.length - 1 && (() => {
+                      const totalH = topPad + (round.length - 1) * stepSize + SLOT_H * 2;
+                      return (
+                        <svg style={{ position: 'absolute', right: -40, top: 0, width: 40, height: totalH, pointerEvents: 'none' }}>
+                          {round.map((_, mIdx) => {
+                            if (mIdx % 2 !== 0) return null;
+                            const y1 = topPad + mIdx * stepSize + SLOT_H;
+                            const y2 = topPad + (mIdx + 1) * stepSize + SLOT_H;
+                            const mid = (y1 + y2) / 2;
+                            return (<g key={mIdx}><line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={y1} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={mid} x2="40" y2={mid} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /></g>);
+                          })}
+                        </svg>
+                      );
+                    })()}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+        const gf = doubleElim.grandFinal;
+        const canClickGF = gf && gf.a && gf.b && gf.a !== 'BYE' && gf.b !== 'BYE';
+
+        return (
+          <>
+            {/* Campeao */}
+            {campeao && (
+              <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+                <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+                <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                  {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+                </div>
+              </div>
+            )}
+
+            {/* Winners */}
+            <h3 style={{ color: '#2ecc71', fontSize: 14, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Chave Principal</h3>
+            {renderDERounds(doubleElim.winners, 'winners')}
+
+            {/* Losers */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '8px 0' }} />
+            <h3 style={{ color: '#e74c3c', fontSize: 14, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Repescagem</h3>
+            {renderDERounds(doubleElim.losers, 'losers')}
+
+            {/* Grand Final */}
+            {gf && (
+              <>
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '8px 0' }} />
+                <h3 style={{ color: '#ffd700', fontSize: 14, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Grande Final</h3>
+                <div style={{ borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,215,0,0.4)', background: 'rgba(0,0,0,0.2)', maxWidth: 250, margin: '0 auto' }}>
+                  <div
+                    onClick={() => canClickGF && selecionarVencedorDE('final', 0, 0, 'a')}
+                    style={{ padding: '0 14px', height: 36, fontSize: 14, fontWeight: gf.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: gf.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canClickGF ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {gf.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(gf.a)}
+                  </div>
+                  <div
+                    onClick={() => canClickGF && selecionarVencedorDE('final', 0, 0, 'b')}
+                    style={{ padding: '0 14px', height: 36, fontSize: 14, fontWeight: gf.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: gf.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: canClickGF ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {gf.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 6 }}>✓</span>}{slotName(gf.b)}
+                  </div>
+                </div>
+              </>
+            )}
           </>
         );
       })()}
