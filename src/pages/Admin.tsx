@@ -681,23 +681,14 @@ export function Admin({ onLogout }: AdminProps) {
 
         <h2 style={{ color: '#fff', fontSize: 18, fontWeight: 600, marginBottom: 20, textAlign: 'center' }}>Selecione ou adicione um torneio</h2>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <input
-            type="text"
-            placeholder="Nome do torneio"
-            value={novoTorneioNome}
-            onChange={(e) => setNovoTorneioNome(e.target.value)}
-            style={{ flex: 1, border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '12px 14px', fontSize: 14, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-          />
-          <button
-            onClick={() => { if (novoTorneioNome.trim()) setShowCriarPopup(true); }}
-            style={{ padding: '12px 20px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: BLUE, background: '#fff', cursor: 'pointer', flexShrink: 0 }}
-          >
-            +
-          </button>
-        </div>
+        <button
+          onClick={() => setShowCriarPopup(true)}
+          style={{ width: '100%', padding: 14, borderRadius: 12, border: '2px dashed rgba(255,255,255,0.3)', fontSize: 14, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer', marginBottom: 20 }}
+        >
+          + Novo Torneio
+        </button>
 
-        {/* Popup criar torneio com datas */}
+        {/* Popup criar torneio */}
         {showCriarPopup && (
           <div
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}
@@ -707,8 +698,18 @@ export function Admin({ onLogout }: AdminProps) {
               onClick={(e) => e.stopPropagation()}
               style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 340, width: '90%' }}
             >
-              <h3 style={{ color: BLUE, fontSize: 16, fontWeight: 700, marginBottom: 16, textAlign: 'center' }}>{novoTorneioNome}</h3>
+              <h3 style={{ color: BLUE, fontSize: 16, fontWeight: 700, marginBottom: 16, textAlign: 'center' }}>Novo Torneio</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                <div>
+                  <label style={{ color: '#666', fontSize: 12, marginBottom: 4, display: 'block' }}>Nome</label>
+                  <input
+                    type="text"
+                    placeholder="Nome do torneio"
+                    value={novoTorneioNome}
+                    onChange={(e) => setNovoTorneioNome(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #ddd', borderRadius: 10, padding: '10px 12px', fontSize: 14, outline: 'none' }}
+                  />
+                </div>
                 <div>
                   <label style={{ color: '#666', fontSize: 12, marginBottom: 4, display: 'block' }}>Data inicio</label>
                   <input
