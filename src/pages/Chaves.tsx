@@ -340,7 +340,7 @@ export function Chaves() {
           )}
 
           {/* Bracket visual - somente leitura */}
-          <div style={{ overflow: 'auto', flex: 1, paddingBottom: 16 }}>
+          {bracket && <div style={{ overflow: 'auto', flex: 1, paddingBottom: 16 }}>
             <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, padding: '0 8px' }}>
               {bracket.map((round, rIdx) => {
                 const SLOT_H = 30;
@@ -448,7 +448,7 @@ export function Chaves() {
                 );
               })}
             </div>
-          </div>
+          </div>}
         </>
       )}
     </div>
