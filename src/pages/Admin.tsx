@@ -1484,10 +1484,10 @@ export function Admin({ onLogout }: AdminProps) {
                     return (
                       <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: isByeM ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)', background: isByeM ? 'transparent' : 'rgba(0,0,0,0.15)', visibility: isByeM ? 'hidden' : 'visible' }}>
                         <div onClick={() => cA && abrirPlacarDC(chave, rIdx, mIdx)} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: aB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: cA ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.a)}
+                          {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.a)}</span>{match.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreA}</span>}
                         </div>
                         <div onClick={() => cB && abrirPlacarDC(chave, rIdx, mIdx)} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: bB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: cB ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.b)}
+                          {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.b)}</span>{match.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreB}</span>}
                         </div>
                       </div>
                     );
