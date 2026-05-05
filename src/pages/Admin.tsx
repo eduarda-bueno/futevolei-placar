@@ -1517,7 +1517,154 @@ export function Admin({ onLogout }: AdminProps) {
       )}
 
       {/* ── Modo: Duas Chaves ── */}
-      {duasChaves && verBracket && (() => {
+      {duasChaves && verBracket && duasChaves.subtipo === 'todos_contra_todos' && duasChaves.jogosA && duasChaves.jogosB && (() => {
+        const renderRRChave = (jogos: RRMatch[], label: string, chaveKey: 'A' | 'B') => {
+          const stats: Record<string, { nome: string; v: number; d: number; pts: number; ptsSof: number }> = {};
+          for (const j of jogos) {
+            if (!stats[j.a.id]) stats[j.a.id] = { nome: j.a.nome, v: 0, d: 0, pts: 0, ptsSof: 0 };
+            if (!stats[j.b.id]) stats[j.b.id] = { nome: j.b.nome, v: 0, d: 0, pts: 0, ptsSof: 0 };
+            if (j.winner) {
+              stats[j.a.id].pts += j.scoreA || 0; stats[j.a.id].ptsSof += j.scoreB || 0;
+              stats[j.b.id].pts += j.scoreB || 0; stats[j.b.id].ptsSof += j.scoreA || 0;
+              if (j.winner === 'a') { stats[j.a.id].v++; stats[j.b.id].d++; } else { stats[j.b.id].v++; stats[j.a.id].d++; }
+            }
+          }
+          const sorted = Object.values(stats).sort((a, b) => b.v - a.v || b.pts - a.pts);
+          const todosJogados = jogos.every(j => j.winner);
+          const campNome = todosJogados && sorted.length > 0 ? sorted[0].nome : null;
+
+          return (
+            <div style={{ flex: 1, minWidth: 250 }}>
+              <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>
+                {label}
+                {campNome && <span style={{ color: '#ffd700', marginLeft: 6 }}>🏆 {campNome}</span>}
+              </h3>
+              {/* Classificacao */}
+              <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+                <div style={{ display: 'flex', padding: '6px 8px', fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                  <span style={{ width: 18 }}>#</span><span style={{ flex: 1 }}>Dupla</span><span style={{ width: 24, textAlign: 'center' }}>V</span><span style={{ width: 24, textAlign: 'center' }}>D</span><span style={{ width: 28, textAlign: 'center' }}>Pts</span>
+                </div>
+                {sorted.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', padding: '6px 8px', fontSize: 12, color: '#fff', fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.15)' : 'transparent', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ width: 18, color: 'rgba(255,255,255,0.4)' }}>{i + 1}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.nome}</span>
+                    <span style={{ width: 24, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span>
+                    <span style={{ width: 24, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span>
+                    <span style={{ width: 28, textAlign: 'center' }}>{s.pts}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Jogos */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {jogos.map((jogo, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => { setPlacarA(jogo.scoreA != null ? String(jogo.scoreA) : ''); setPlacarB(jogo.scoreB != null ? String(jogo.scoreB) : ''); setShowPlacar({ rIdx: idx, mIdx: 0, tipo: `dcrr_${chaveKey}` }); }}
+                    style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+                  >
+                    <div style={{ flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: jogo.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: jogo.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center' }}>
+                      {jogo.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jogo.a.nome}</span>
+                      {jogo.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{jogo.scoreA}</span>}
+                    </div>
+                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, padding: '0 4px' }}>x</span>
+                    <div style={{ flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: jogo.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: jogo.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {jogo.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginRight: 4 }}>{jogo.scoreB}</span>}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jogo.b.nome}</span>
+                      {jogo.winner === 'b' && <span style={{ color: '#2ecc71', marginLeft: 4 }}>✓</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        };
+
+        // Popup placar para DC RR
+        const renderPlacarPopupDCRR = () => {
+          if (!showPlacar?.tipo?.startsWith('dcrr_')) return null;
+          const chaveKey = showPlacar.tipo === 'dcrr_A' ? 'A' : 'B';
+          const jogos = chaveKey === 'A' ? duasChaves.jogosA! : duasChaves.jogosB!;
+          const jogo = jogos[showPlacar.rIdx];
+          return (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowPlacar(null)}>
+              <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 300, width: '90%', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{jogo.a.nome}</div>
+                    <input type="number" min="0" value={placarA} onChange={(e) => setPlacarA(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                  </div>
+                  <span style={{ color: '#999', fontSize: 14, fontWeight: 'bold' }}>x</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{jogo.b.nome}</div>
+                    <input type="number" min="0" value={placarB} onChange={(e) => setPlacarB(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => {
+                    const sA = parseInt(placarA) || 0; const sB = parseInt(placarB) || 0;
+                    const w: 'a' | 'b' = sA >= sB ? 'a' : 'b';
+                    const newJogos = jogos.map((j, i) => i === showPlacar.rIdx ? { ...j, scoreA: sA, scoreB: sB, winner: w } : j);
+                    const newData = { ...duasChaves, [chaveKey === 'A' ? 'jogosA' : 'jogosB']: newJogos };
+                    // Check campeao de cada chave
+                    const checkCamp = (jgs: RRMatch[]) => { const st: Record<string, { n: string; v: number }> = {}; let all = true; for (const j of jgs) { if (!st[j.a.id]) st[j.a.id] = { n: j.a.nome, v: 0 }; if (!st[j.b.id]) st[j.b.id] = { n: j.b.nome, v: 0 }; if (j.winner === 'a') st[j.a.id].v++; else if (j.winner === 'b') st[j.b.id].v++; else all = false; } return all ? Object.values(st).sort((a, b) => b.v - a.v)[0]?.n || null : null; };
+                    newData.campeaoA = checkCamp(newData.jogosA!);
+                    newData.campeaoB = checkCamp(newData.jogosB!);
+                    if (newData.campeaoA && newData.campeaoB) {
+                      newData.final = { a: { nome: newData.campeaoA, id: 'a' }, b: { nome: newData.campeaoB, id: 'b' }, winner: null };
+                    }
+                    setDuasChaves(newData);
+                    const champ = newData.final?.winner ? slotName(newData.final[newData.final.winner]) : null;
+                    setCampeao(champ);
+                    salvarDados(newData, champ);
+                    setShowPlacar(null);
+                  }} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}>Confirmar</button>
+                  <button onClick={() => {
+                    const newJogos = jogos.map((j, i) => i === showPlacar.rIdx ? { ...j, scoreA: null, scoreB: null, winner: null } : j);
+                    const newData = { ...duasChaves, [chaveKey === 'A' ? 'jogosA' : 'jogosB']: newJogos, campeaoA: null, campeaoB: null };
+                    setDuasChaves(newData); setCampeao(null); salvarDados(newData, null); setShowPlacar(null);
+                  }} style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #e74c3c', fontSize: 12, fontWeight: 'bold', color: '#e74c3c', background: '#fff', cursor: 'pointer' }}>Limpar</button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        return (
+          <>
+            {campeao && (
+              <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+                <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+                <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 20, overflow: 'auto', flex: 1 }}>
+              {renderRRChave(duasChaves.jogosA!, 'Chave A', 'A')}
+              {renderRRChave(duasChaves.jogosB!, 'Chave B', 'B')}
+            </div>
+            {/* Final */}
+            {duasChaves.campeaoA && duasChaves.campeaoB && duasChaves.final && (
+              <div style={{ marginTop: 12, flexShrink: 0 }}>
+                <h3 style={{ color: '#ffd700', fontSize: 14, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Final</h3>
+                <div
+                  onClick={() => { if (duasChaves.final?.a && duasChaves.final?.b) abrirPlacarFinalDC(); }}
+                  style={{ borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,215,0,0.4)', background: 'rgba(0,0,0,0.2)', maxWidth: 250, margin: '0 auto', cursor: 'pointer' }}
+                >
+                  <div style={{ padding: '0 10px', height: 32, fontSize: 12, fontWeight: duasChaves.final?.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: duasChaves.final?.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center' }}>
+                    {duasChaves.final?.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{duasChaves.campeaoA}
+                  </div>
+                  <div style={{ padding: '0 10px', height: 32, fontSize: 12, fontWeight: duasChaves.final?.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: duasChaves.final?.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center' }}>
+                    {duasChaves.final?.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{duasChaves.campeaoB}
+                  </div>
+                </div>
+              </div>
+            )}
+            {renderPlacarPopupDCRR()}
+          </>
+        );
+      })()}
+
+      {duasChaves && verBracket && duasChaves.subtipo !== 'todos_contra_todos' && (() => {
         const SH = 30; const MH = SH * 2; const BG = 40;
 
         const renderRounds = (rounds: BracketRound[], chave: 'A' | 'B', mirrored: boolean) => (
