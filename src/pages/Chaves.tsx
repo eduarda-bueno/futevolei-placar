@@ -58,8 +58,9 @@ export function Chaves() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string | null>(null);
 
-  // Bracket
+  // Bracket / Round Robin
   const [bracket, setBracket] = useState<BracketRound[] | null>(null);
+  const [roundRobin, setRoundRobin] = useState<any>(null);
   const [campeao, setCampeao] = useState<string | null>(null);
   const [carregandoBracket, setCarregandoBracket] = useState(false);
 
@@ -90,10 +91,18 @@ export function Chaves() {
     setCarregandoBracket(true);
     const { data } = await supabase.from('brackets').select('*').eq('categoria_id', categoriaId).eq('ativo', true).single();
     if (data) {
-      setBracket(data.dados as BracketRound[]);
+      const dados = data.dados as any;
+      if (dados?.tipo === 'todos_contra_todos') {
+        setRoundRobin(dados);
+        setBracket(null);
+      } else {
+        setBracket(dados as BracketRound[]);
+        setRoundRobin(null);
+      }
       setCampeao(data.campeao || null);
     } else {
       setBracket(null);
+      setRoundRobin(null);
       setCampeao(null);
     }
     setCarregandoBracket(false);
@@ -251,10 +260,72 @@ export function Chaves() {
 
       {carregandoBracket ? (
         <div style={{ textAlign: 'center', padding: 24, color: 'rgba(255,255,255,0.5)' }}>Carregando...</div>
-      ) : !bracket ? (
+      ) : !bracket && !roundRobin ? (
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
           Chave ainda nao foi sorteada para esta categoria.
         </p>
+      ) : roundRobin ? (
+        <>
+          {/* Campeao RR */}
+          {campeao && (
+            <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+              <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+              </div>
+            </div>
+          )}
+          {/* Classificacao */}
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Classificacao</h3>
+            <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                <span style={{ width: 24 }}>#</span>
+                <span style={{ flex: 1 }}>Dupla</span>
+                <span style={{ width: 30, textAlign: 'center' }}>V</span>
+                <span style={{ width: 30, textAlign: 'center' }}>D</span>
+                <span style={{ width: 30, textAlign: 'center' }}>J</span>
+              </div>
+              {(() => {
+                const stats: Record<string, { nome: string; v: number; d: number; j: number }> = {};
+                for (const jogo of roundRobin.jogos) {
+                  if (!stats[jogo.a.id]) stats[jogo.a.id] = { nome: jogo.a.nome, v: 0, d: 0, j: 0 };
+                  if (!stats[jogo.b.id]) stats[jogo.b.id] = { nome: jogo.b.nome, v: 0, d: 0, j: 0 };
+                  if (jogo.winner) {
+                    stats[jogo.a.id].j++; stats[jogo.b.id].j++;
+                    if (jogo.winner === 'a') { stats[jogo.a.id].v++; stats[jogo.b.id].d++; }
+                    else { stats[jogo.b.id].v++; stats[jogo.a.id].d++; }
+                  }
+                }
+                return Object.values(stats).sort((a, b) => b.v - a.v).map((s, i) => (
+                  <div key={i} style={{ display: 'flex', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 13, color: '#fff', fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.15)' : 'transparent' }}>
+                    <span style={{ width: 24, color: 'rgba(255,255,255,0.4)' }}>{i + 1}</span>
+                    <span style={{ flex: 1 }}>{s.nome}</span>
+                    <span style={{ width: 30, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span>
+                    <span style={{ width: 30, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span>
+                    <span style={{ width: 30, textAlign: 'center' }}>{s.j}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+          {/* Jogos */}
+          <h3 style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Jogos</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {roundRobin.jogos.map((jogo: any, idx: number) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ flex: 1, padding: '10px 12px', fontSize: 13, fontWeight: jogo.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: jogo.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderRight: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {jogo.winner === 'a' && '✓ '}{jogo.a.nome}
+                </div>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, padding: '0 8px' }}>vs</span>
+                <div style={{ flex: 1, padding: '10px 12px', fontSize: 13, fontWeight: jogo.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: jogo.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', borderLeft: '1px solid rgba(255,255,255,0.1)', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {jogo.b.nome}{jogo.winner === 'b' && ' ✓'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       ) : (
         <>
           {/* Campeao */}

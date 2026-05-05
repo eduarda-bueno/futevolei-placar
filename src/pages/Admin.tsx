@@ -40,6 +40,20 @@ interface BracketMatch {
 }
 type BracketRound = BracketMatch[];
 
+// ── Round Robin types ──
+interface RRMatch {
+  a: { nome: string; id: string };
+  b: { nome: string; id: string };
+  winner: 'a' | 'b' | null;
+}
+
+interface RoundRobinData {
+  tipo: 'todos_contra_todos';
+  jogos: RRMatch[];
+}
+
+type TipoTorneio = 'eliminatorio' | 'todos_contra_todos';
+
 function getNomeRodada(totalRounds: number, roundIndex: number): string {
   const fromFinal = totalRounds - 1 - roundIndex;
   if (fromFinal === 0) return 'Final';
@@ -181,12 +195,14 @@ export function Admin({ onLogout }: AdminProps) {
   const [trocaSelecionada, setTrocaSelecionada] = useState<{ round: number; match: number; side: 'a' | 'b' } | null>(null);
   const [showFixarPopup, setShowFixarPopup] = useState(false);
   const [verBracket, setVerBracket] = useState(false);
+  const [roundRobin, setRoundRobin] = useState<RoundRobinData | null>(null);
+  const [tipoSorteio, setTipoSorteio] = useState<TipoTorneio | null>(null);
   const { setHideFooter } = useFooter();
 
   useEffect(() => {
-    setHideFooter(verBracket);
+    setHideFooter(verBracket && !!(bracket || roundRobin));
     return () => setHideFooter(false);
-  }, [verBracket]);
+  }, [verBracket, bracket, roundRobin]);
 
   useEffect(() => {
     carregarTorneios();
@@ -256,19 +272,30 @@ export function Admin({ onLogout }: AdminProps) {
   async function carregarBracket(categoriaId: string) {
     const { data } = await supabase.from('brackets').select('*').eq('categoria_id', categoriaId).eq('ativo', true).single();
     if (data) {
-      setBracket(data.dados as BracketRound[]);
+      const dados = data.dados as any;
+      if (dados?.tipo === 'todos_contra_todos') {
+        setRoundRobin(dados as RoundRobinData);
+        setBracket(null);
+        setTipoSorteio('todos_contra_todos');
+      } else {
+        setBracket(dados as BracketRound[]);
+        setRoundRobin(null);
+        setTipoSorteio('eliminatorio');
+      }
       setCampeao(data.campeao || null);
     } else {
       setBracket(null);
+      setRoundRobin(null);
       setCampeao(null);
+      setTipoSorteio(null);
     }
   }
 
-  async function salvarBracket(rounds: BracketRound[], champ: string | null) {
+  async function salvarDados(dados: any, champ: string | null) {
     if (!categoriaSelecionada) return;
     await supabase.from('brackets').upsert({
       categoria_id: categoriaSelecionada,
-      dados: rounds as any,
+      dados,
       campeao: champ,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'categoria_id' });
@@ -285,6 +312,69 @@ export function Admin({ onLogout }: AdminProps) {
     await supabase.from('torneios').update({ fixado: novoValor }).eq('id', torneioSelecionado);
     await carregarTorneios();
     setShowFixarPopup(false);
+  }
+
+  // ── Round Robin ──
+  function gerarRoundRobin() {
+    if (duplas.length < 2) return;
+    const teams = duplas.map((d) => ({
+      nome: d.jogador1 + (d.jogador2 ? ` e ${d.jogador2}` : ''),
+      id: d.id,
+    }));
+    // Shuffle
+    const shuffled = [...teams].sort(() => Math.random() - 0.5);
+    // Generate all pairs
+    const jogos: RRMatch[] = [];
+    for (let i = 0; i < shuffled.length; i++) {
+      for (let j = i + 1; j < shuffled.length; j++) {
+        jogos.push({ a: shuffled[i], b: shuffled[j], winner: null });
+      }
+    }
+    const data: RoundRobinData = { tipo: 'todos_contra_todos', jogos };
+    setRoundRobin(data);
+    setBracket(null);
+    setTipoSorteio('todos_contra_todos');
+    setCampeao(null);
+    setVerBracket(true);
+    salvarDados(data, null);
+  }
+
+  function selecionarVencedorRR(idx: number, side: 'a' | 'b') {
+    if (!roundRobin) return;
+    const updated = { ...roundRobin, jogos: roundRobin.jogos.map((j, i) => i === idx ? { ...j, winner: j.winner === side ? null : side } : j) };
+    setRoundRobin(updated);
+
+    // Calcular classificacao e ver se tem campeao
+    const stats: Record<string, { nome: string; v: number }> = {};
+    let todosJogados = true;
+    for (const j of updated.jogos) {
+      if (!stats[j.a.id]) stats[j.a.id] = { nome: j.a.nome, v: 0 };
+      if (!stats[j.b.id]) stats[j.b.id] = { nome: j.b.nome, v: 0 };
+      if (j.winner === 'a') stats[j.a.id].v++;
+      else if (j.winner === 'b') stats[j.b.id].v++;
+      else todosJogados = false;
+    }
+    const champ = todosJogados
+      ? Object.values(stats).sort((a, b) => b.v - a.v)[0]?.nome || null
+      : null;
+    setCampeao(champ);
+    salvarDados(updated, champ);
+  }
+
+  function getClassificacao(): { nome: string; v: number; d: number; j: number }[] {
+    if (!roundRobin) return [];
+    const stats: Record<string, { nome: string; v: number; d: number; j: number }> = {};
+    for (const jogo of roundRobin.jogos) {
+      if (!stats[jogo.a.id]) stats[jogo.a.id] = { nome: jogo.a.nome, v: 0, d: 0, j: 0 };
+      if (!stats[jogo.b.id]) stats[jogo.b.id] = { nome: jogo.b.nome, v: 0, d: 0, j: 0 };
+      if (jogo.winner) {
+        stats[jogo.a.id].j++;
+        stats[jogo.b.id].j++;
+        if (jogo.winner === 'a') { stats[jogo.a.id].v++; stats[jogo.b.id].d++; }
+        else { stats[jogo.b.id].v++; stats[jogo.a.id].d++; }
+      }
+    }
+    return Object.values(stats).sort((a, b) => b.v - a.v);
   }
 
   function selecionarCategoriaPrincipal(nome: string) {
@@ -356,8 +446,11 @@ export function Admin({ onLogout }: AdminProps) {
     const rounds = buildBracket(duplas);
     const propagated = propagateWinners(rounds);
     setBracket(propagated);
+    setRoundRobin(null);
+    setTipoSorteio('eliminatorio');
     setCampeao(null);
-    salvarBracket(propagated, null);
+    setVerBracket(true);
+    salvarDados(propagated, null);
   }
 
   function selecionarVencedor(roundIdx: number, matchIdx: number, side: 'a' | 'b') {
@@ -393,7 +486,7 @@ export function Admin({ onLogout }: AdminProps) {
     }
     setCampeao(champ);
     setBracket(propagated);
-    salvarBracket(propagated, champ);
+    salvarDados(propagated, champ);
   }
 
   function trocarDuplas(r1: number, m1: number, s1: 'a' | 'b', r2: number, m2: number, s2: 'a' | 'b') {
@@ -421,7 +514,7 @@ export function Admin({ onLogout }: AdminProps) {
     setCampeao(null);
     setModoTroca(false);
     setTrocaSelecionada(null);
-    salvarBracket(propagated, null);
+    salvarDados(propagated, null);
   }
 
   function handleSlotClickTroca(rIdx: number, mIdx: number, side: 'a' | 'b') {
@@ -706,16 +799,24 @@ export function Admin({ onLogout }: AdminProps) {
             )}
           </div>
 
-          {duplas.length >= 2 && !bracket && (
-            <button
-              onClick={() => { sortearChave(); setVerBracket(true); }}
-              style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer', flexShrink: 0 }}
-            >
-              Sortear e Iniciar
-            </button>
+          {duplas.length >= 2 && !tipoSorteio && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={sortearChave}
+                style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}
+              >
+                Sorteio Eliminatoria
+              </button>
+              <button
+                onClick={gerarRoundRobin}
+                style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}
+              >
+                Todos Contra Todos
+              </button>
+            </div>
           )}
 
-          {bracket && (
+          {tipoSorteio && (
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <button
                 onClick={() => setVerBracket(true)}
@@ -724,7 +825,11 @@ export function Admin({ onLogout }: AdminProps) {
                 Ver Sorteio
               </button>
               <button
-                onClick={() => { if (confirm('Refazer o sorteio? O sorteio atual sera perdido.')) { sortearChave(); setVerBracket(true); } }}
+                onClick={() => {
+                  if (!confirm('Refazer o sorteio? O sorteio atual sera perdido.')) return;
+                  if (tipoSorteio === 'eliminatorio') sortearChave();
+                  else gerarRoundRobin();
+                }}
                 style={{ flex: 1, padding: 14, borderRadius: 12, border: '2px solid rgba(255,255,255,0.3)', fontSize: 14, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer' }}
               >
                 Refazer Sorteio
@@ -909,6 +1014,95 @@ export function Admin({ onLogout }: AdminProps) {
             {modoTroca ? 'Cancelar Troca' : 'Alterar Jogos'}
           </button>
 
+        </>
+      )}
+
+      {/* ── Modo: Todos Contra Todos ── */}
+      {roundRobin && verBracket && (
+        <>
+          {/* Campeao */}
+          {campeao && (
+            <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+              <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+              </div>
+            </div>
+          )}
+
+          {/* Classificacao */}
+          <div style={{ marginBottom: 16, flexShrink: 0 }}>
+            <h3 style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Classificacao</h3>
+            <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                <span style={{ width: 24 }}>#</span>
+                <span style={{ flex: 1 }}>Dupla</span>
+                <span style={{ width: 30, textAlign: 'center' }}>V</span>
+                <span style={{ width: 30, textAlign: 'center' }}>D</span>
+                <span style={{ width: 30, textAlign: 'center' }}>J</span>
+              </div>
+              {getClassificacao().map((s, i) => (
+                <div key={i} style={{ display: 'flex', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 13, color: '#fff', fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.15)' : 'transparent' }}>
+                  <span style={{ width: 24, color: 'rgba(255,255,255,0.4)' }}>{i + 1}</span>
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nome}</span>
+                  <span style={{ width: 30, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span>
+                  <span style={{ width: 30, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span>
+                  <span style={{ width: 30, textAlign: 'center' }}>{s.j}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Jogos */}
+          <h3 style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Jogos</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflow: 'auto', flex: 1 }}>
+            {roundRobin.jogos.map((jogo, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <button
+                  onClick={() => selecionarVencedorRR(idx, 'a')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    fontSize: 13,
+                    fontWeight: jogo.winner === 'a' ? 'bold' : 'normal',
+                    color: '#fff',
+                    background: jogo.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent',
+                    border: 'none',
+                    borderRight: '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {jogo.winner === 'a' && '✓ '}{jogo.a.nome}
+                </button>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, padding: '0 8px' }}>vs</span>
+                <button
+                  onClick={() => selecionarVencedorRR(idx, 'b')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    fontSize: 13,
+                    fontWeight: jogo.winner === 'b' ? 'bold' : 'normal',
+                    color: '#fff',
+                    background: jogo.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent',
+                    border: 'none',
+                    borderLeft: '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer',
+                    textAlign: 'right',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {jogo.b.nome}{jogo.winner === 'b' && ' ✓'}
+                </button>
+              </div>
+            ))}
+          </div>
         </>
       )}
     </div>
