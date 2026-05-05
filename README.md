@@ -16,7 +16,7 @@ Aplicativo PWA para gerenciar placares e torneios de futevolei e beach tennis.
 - Lista de torneios fixados (somente os que o admin fixou)
 - Categorias agrupadas por tipo (Feminino, Masculino, Misto)
 - Mostra apenas categorias que possuem sorteio
-- Bracket visual horizontal somente leitura
+- Suporta todos os 4 modos de torneio (somente leitura)
 - Exibe campeao (Campeas para feminino, Campeoes para masculino/misto)
 
 ### Configuracoes (Admin - acesso via login)
@@ -26,16 +26,69 @@ Aplicativo PWA para gerenciar placares e torneios de futevolei e beach tennis.
 - Soft-delete de torneios (desativa, nao exclui do banco)
 - Categorias vinculadas ao torneio: Feminino, Masculino, Misto
 - Subcategorias: Estreante, Iniciante, Intermediario, Avancado, 30+
-- Cadastro de duplas com input unico (placeholder dinamico: Dupla 1, 2, 3...)
-- Sorteio automatico de chave eliminatoria com BYEs
-- Bracket visual horizontal com conectores SVG
+- Cadastro de duplas compacto (tags inline com remocao)
+- 4 modos de sorteio (ver abaixo)
 - Selecao de vencedor por clique (verde com check)
 - Troca de duplas de posicao (botao "Alterar Jogos")
-- Botoes "Ver Sorteio" e "Refazer Sorteio" apos primeiro sorteio
 - Bracket salvo no Supabase (persiste entre sessoes)
 - Footer escondido automaticamente na tela do bracket
 
-### Layout
+## Modos de Sorteio
+
+### 1. Sorteio Aleatorio (eliminatoria simples)
+Chave eliminatoria com BYEs automaticos. Perdeu, esta fora.
+
+```
+Dupla 1 ─┐
+          ├─ Vencedor ─┐
+Dupla 2 ─┘             ├─ Vencedor ─┐
+Dupla 3 ─┐             │            ├─ CAMPEAO
+          ├─ Vencedor ─┘            │
+Dupla 4 ─┘                         │
+Dupla 5 ─┐                         │
+          ├─ Vencedor ─┐            │
+Dupla 6 ─┘             ├─ Vencedor ─┘
+Dupla 7 ─┐             │
+          ├─ Vencedor ─┘
+Dupla 8 ─┘
+```
+
+### 2. Todos Contra Todos (round-robin)
+Cada dupla joga contra todas as outras. Funciona com qualquer numero (par ou impar).
+Tabela de classificacao com V (vitorias), D (derrotas), J (jogos).
+
+### 3. Duas Chaves (espelhadas com final)
+Duplas divididas em dois grupos. Chaves espelhadas convergem para a final no centro.
+
+```
+CHAVE A                 FINAL              CHAVE B
+Dupla 1 ─┐                              ┌─ Dupla 5
+          ├─ Venc A ─┐  ┌────────┐  ┌─ Venc C ─┤
+Dupla 2 ─┘           ├─▶│ Camp A │  │           └─ Dupla 6
+                         │   vs  │
+Dupla 3 ─┐           ┌─▶│ Camp B │  │           ┌─ Dupla 7
+          ├─ Venc B ─┘  └────────┘  └─ Venc D ─┤
+Dupla 4 ─┘                              └─ Dupla 8
+```
+
+### 4. Dupla Eliminacao
+Quem perde na chave principal vai para a repescagem (segunda chance).
+Vencedor da principal vs vencedor da repescagem na Grande Final.
+
+```
+CHAVE PRINCIPAL (Winners)     REPESCAGEM (Losers)
+Dupla 1 ─┐                   Perdedores da
+          ├─ Venc ─┐          principal entram
+Dupla 2 ─┘        ├─ Camp    aqui e jogam entre
+Dupla 3 ─┐        │  Princ   si. O vencedor da
+          ├─ Venc ─┘    │     repescagem enfrenta
+Dupla 4 ─┘              │     o campeao da
+                         │     principal na
+              GRANDE FINAL     Grande Final.
+              Camp Princ vs Camp Repesc = CAMPEAO
+```
+
+## Layout
 - Degrade compartilhado em todas as telas (ceu/areia)
 - Menu inferior com onda SVG: Placar, Jogos, Config
 - Menu destaca a aba ativa
@@ -82,7 +135,13 @@ Executar o arquivo `supabase-schema.sql` no SQL Editor do Supabase para criar to
 | **categorias** | Categorias por torneio | torneio_id, nome, ativo |
 | **duplas** | Duplas por categoria | categoria_id, jogador1, jogador2, ativo |
 | **jogos** | Jogos com placar | categoria_id, dupla_a_id, dupla_b_id, pontos, status, ativo |
-| **brackets** | Chave eliminatoria (JSON) | categoria_id, dados (jsonb), campeao, ativo |
+| **brackets** | Dados do torneio (JSON) | categoria_id, dados (jsonb), campeao, ativo |
+
+O campo `brackets.dados` armazena como JSON um dos 4 formatos:
+- Eliminatoria: `BracketRound[]` (array de rodadas)
+- Round-robin: `{ tipo: 'todos_contra_todos', jogos: [...] }`
+- Duas chaves: `{ tipo: 'duas_chaves', chaveA, chaveB, final, ... }`
+- Dupla eliminacao: `{ tipo: 'dupla_eliminacao', winners, losers, grandFinal }`
 
 ### Soft-delete
 Todas as tabelas possuem coluna `ativo` (boolean default true). Ao "excluir", o registro e desativado (ativo=false), nunca removido. Para reativar via SQL:
@@ -109,7 +168,7 @@ src/
   pages/
     PlacarRapido.tsx  # Tela do placar digital
     Chaves.tsx        # Tela publica: torneios > categorias > bracket (leitura)
-    Admin.tsx         # Painel admin: torneios > categorias > duplas > bracket
+    Admin.tsx         # Painel admin: torneios > categorias > duplas > sorteio
     AdminLogin.tsx    # Tela de login com usuario simples
 public/
   ct-riozinho-logo.png  # Logo do CT (fundo transparente)
@@ -130,14 +189,16 @@ Login > Torneios (criar/fixar/excluir)
        Subcategoria (Estreante / Iniciante / Intermediario / Avancado / 30+)
          |
          v
-       Cadastro de Duplas + Sortear
+       Tela unica: Cadastro de Duplas + Sorteio
          |
-         v
-       Bracket (selecionar vencedores / alterar jogos)
+         ├─ Sorteio Aleatorio (eliminatoria)
+         ├─ Todos Contra Todos (round-robin)
+         ├─ Dupla Eliminacao (winners + losers + grand final)
+         └─ Duas Chaves (espelhadas com final no centro)
 ```
 
 ## Fluxo dos Jogos (publico)
 
 ```
-Torneios fixados > Categorias com bracket > Bracket (somente leitura)
+Torneios fixados > Categorias com bracket > Visualizacao (somente leitura)
 ```
