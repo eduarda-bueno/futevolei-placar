@@ -164,6 +164,7 @@ export function Admin({ onLogout }: AdminProps) {
   const [novoTorneioNome, setNovoTorneioNome] = useState('');
   const [novoTorneioInicio, setNovoTorneioInicio] = useState('');
   const [novoTorneioFim, setNovoTorneioFim] = useState('');
+  const [showCriarPopup, setShowCriarPopup] = useState(false);
 
   // Categorias, duplas
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -458,38 +459,62 @@ export function Admin({ onLogout }: AdminProps) {
 
         <h2 style={{ color: '#fff', fontSize: 18, fontWeight: 600, marginBottom: 20, textAlign: 'center' }}>Selecione ou adicione um torneio</h2>
 
-        <form onSubmit={criarTorneio} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           <input
             type="text"
             placeholder="Nome do torneio"
             value={novoTorneioNome}
             onChange={(e) => setNovoTorneioNome(e.target.value)}
-            style={{ width: '100%', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '12px 14px', fontSize: 14, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+            style={{ flex: 1, border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '12px 14px', fontSize: 14, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
           />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4, display: 'block' }}>Inicio</label>
-              <input
-                type="date"
-                value={novoTorneioInicio}
-                onChange={(e) => setNovoTorneioInicio(e.target.value)}
-                style={{ width: '100%', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '10px 12px', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4, display: 'block' }}>Fim</label>
-              <input
-                type="date"
-                value={novoTorneioFim}
-                onChange={(e) => setNovoTorneioFim(e.target.value)}
-                style={{ width: '100%', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '10px 12px', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-              />
+          <button
+            onClick={() => { if (novoTorneioNome.trim()) setShowCriarPopup(true); }}
+            style={{ padding: '12px 20px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: BLUE, background: '#fff', cursor: 'pointer', flexShrink: 0 }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Popup criar torneio com datas */}
+        {showCriarPopup && (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}
+            onClick={() => setShowCriarPopup(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 340, width: '90%' }}
+            >
+              <h3 style={{ color: BLUE, fontSize: 16, fontWeight: 700, marginBottom: 16, textAlign: 'center' }}>{novoTorneioNome}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                <div>
+                  <label style={{ color: '#666', fontSize: 12, marginBottom: 4, display: 'block' }}>Data inicio</label>
+                  <input
+                    type="date"
+                    value={novoTorneioInicio}
+                    onChange={(e) => setNovoTorneioInicio(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #ddd', borderRadius: 10, padding: '10px 12px', fontSize: 14, outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ color: '#666', fontSize: 12, marginBottom: 4, display: 'block' }}>Data fim</label>
+                  <input
+                    type="date"
+                    value={novoTorneioFim}
+                    onChange={(e) => setNovoTorneioFim(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #ddd', borderRadius: 10, padding: '10px 12px', fontSize: 14, outline: 'none' }}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={(e) => { criarTorneio(e as any); setShowCriarPopup(false); }}
+                style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: BLUE, cursor: 'pointer' }}
+              >
+                Criar Torneio
+              </button>
             </div>
           </div>
-          <button type="submit" style={{ width: '100%', padding: '12px 20px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: BLUE, background: '#fff', cursor: 'pointer' }}>
-            Criar
-          </button>
-        </form>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {torneios.map((t) => {
