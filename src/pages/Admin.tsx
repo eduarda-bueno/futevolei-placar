@@ -201,6 +201,8 @@ export function Admin({ onLogout }: AdminProps) {
   const [showPlacar, setShowPlacar] = useState<{ rIdx: number; mIdx: number; section?: string } | null>(null);
   const [placarA, setPlacarA] = useState('');
   const [placarB, setPlacarB] = useState('');
+  const [showStats, setShowStats] = useState(false);
+  const [statsSort, setStatsSort] = useState<'v' | 'd' | 'pts'>('v');
   const [roundRobin, setRoundRobin] = useState<RoundRobinData | null>(null);
   const [duasChaves, setDuasChaves] = useState<DuasChavesData | null>(null);
   const [tipoSorteio, setTipoSorteio] = useState<TipoTorneio | null>(null);
@@ -594,6 +596,52 @@ export function Admin({ onLogout }: AdminProps) {
     setBracket(propagated);
     salvarDados(propagated, champ);
     setShowPlacar(null);
+  }
+
+  function getStats(rounds: BracketRound[]): { nome: string; v: number; d: number; pts: number; ptsSofridos: number; jogos: number }[] {
+    const stats: Record<string, { nome: string; v: number; d: number; pts: number; ptsSofridos: number; jogos: number }> = {};
+    for (const round of rounds) {
+      for (const match of round) {
+        if (!match.a || !match.b || match.a === 'BYE' || match.b === 'BYE' || !match.winner) continue;
+        const nA = slotName(match.a);
+        const nB = slotName(match.b);
+        const idA = typeof match.a === 'object' ? match.a.id : '';
+        const idB = typeof match.b === 'object' ? match.b.id : '';
+        if (!stats[idA]) stats[idA] = { nome: nA, v: 0, d: 0, pts: 0, ptsSofridos: 0, jogos: 0 };
+        if (!stats[idB]) stats[idB] = { nome: nB, v: 0, d: 0, pts: 0, ptsSofridos: 0, jogos: 0 };
+        stats[idA].jogos++;
+        stats[idB].jogos++;
+        stats[idA].pts += match.scoreA || 0;
+        stats[idA].ptsSofridos += match.scoreB || 0;
+        stats[idB].pts += match.scoreB || 0;
+        stats[idB].ptsSofridos += match.scoreA || 0;
+        if (match.winner === 'a') { stats[idA].v++; stats[idB].d++; }
+        else { stats[idB].v++; stats[idA].d++; }
+      }
+    }
+    return Object.values(stats);
+  }
+
+  function getAllStats(): { nome: string; v: number; d: number; pts: number; ptsSofridos: number; jogos: number }[] {
+    let all: { nome: string; v: number; d: number; pts: number; ptsSofridos: number; jogos: number }[] = [];
+    if (bracket) {
+      all = getStats(bracket);
+    } else if (duasChaves) {
+      const statsA = getStats(duasChaves.chaveA);
+      const statsB = getStats(duasChaves.chaveB);
+      // Merge
+      const merged: Record<string, typeof all[0]> = {};
+      for (const s of [...statsA, ...statsB]) {
+        if (!merged[s.nome]) merged[s.nome] = { ...s };
+        else { merged[s.nome].v += s.v; merged[s.nome].d += s.d; merged[s.nome].pts += s.pts; merged[s.nome].ptsSofridos += s.ptsSofridos; merged[s.nome].jogos += s.jogos; }
+      }
+      all = Object.values(merged);
+    }
+    // Sort
+    if (statsSort === 'v') all.sort((a, b) => b.v - a.v || b.pts - a.pts);
+    else if (statsSort === 'd') all.sort((a, b) => a.d - b.d || b.v - a.v);
+    else all.sort((a, b) => b.pts - a.pts || b.v - a.v);
+    return all;
   }
 
   function limparPlacar() {
@@ -1161,6 +1209,66 @@ export function Admin({ onLogout }: AdminProps) {
           >
             {modoTroca ? 'Cancelar Troca' : 'Alterar Jogos'}
           </button>
+
+          {/* Estatisticas */}
+          <button
+            onClick={() => setShowStats(true)}
+            style={{ width: '100%', padding: 14, borderRadius: 12, border: '2px solid rgba(255,255,255,0.3)', fontSize: 14, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer', marginTop: 8, flexShrink: 0 }}
+          >
+            Estatisticas
+          </button>
+
+          {/* Popup Estatisticas */}
+          {showStats && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowStats(false)}>
+              <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '20px 16px', maxWidth: 420, width: '95%', maxHeight: '80vh', overflow: 'auto' }}>
+                <h3 style={{ color: BLUE, fontSize: 16, fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>Estatisticas</h3>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, justifyContent: 'center' }}>
+                  {(['v', 'd', 'pts'] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setStatsSort(s)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 8,
+                        border: 'none',
+                        fontSize: 12,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        background: statsSort === s ? BLUE : '#eee',
+                        color: statsSort === s ? '#fff' : '#666',
+                      }}
+                    >
+                      {s === 'v' ? 'Vitorias' : s === 'd' ? 'Derrotas' : 'Pontos'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', padding: '8px 10px', background: '#f5f5f5', fontSize: 11, fontWeight: 600, color: '#999' }}>
+                    <span style={{ width: 22 }}>#</span>
+                    <span style={{ flex: 1 }}>Dupla</span>
+                    <span style={{ width: 28, textAlign: 'center' }}>V</span>
+                    <span style={{ width: 28, textAlign: 'center' }}>D</span>
+                    <span style={{ width: 36, textAlign: 'center' }}>Pts</span>
+                    <span style={{ width: 36, textAlign: 'center' }}>Sof</span>
+                  </div>
+                  {getAllStats().map((s, i) => (
+                    <div key={i} style={{ display: 'flex', padding: '8px 10px', borderTop: '1px solid #f0f0f0', fontSize: 13, color: BLUE, fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.08)' : '#fff' }}>
+                      <span style={{ width: 22, color: '#999' }}>{i + 1}</span>
+                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nome}</span>
+                      <span style={{ width: 28, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span>
+                      <span style={{ width: 28, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span>
+                      <span style={{ width: 36, textAlign: 'center' }}>{s.pts}</span>
+                      <span style={{ width: 36, textAlign: 'center', color: '#999' }}>{s.ptsSofridos}</span>
+                    </div>
+                  ))}
+                  {getAllStats().length === 0 && (
+                    <div style={{ padding: 16, textAlign: 'center', color: '#999', fontSize: 13 }}>Nenhum jogo com placar registrado.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Popup Placar */}
           {showPlacar && bracket && (() => {
