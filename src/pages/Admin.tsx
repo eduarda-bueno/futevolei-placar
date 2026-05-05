@@ -58,8 +58,11 @@ interface RoundRobinData {
 
 interface DuasChavesData {
   tipo: 'duas_chaves';
+  subtipo?: 'eliminatorio' | 'todos_contra_todos';
   chaveA: BracketRound[];
   chaveB: BracketRound[];
+  jogosA?: RRMatch[];
+  jogosB?: RRMatch[];
   campeaoA: string | null;
   campeaoB: string | null;
   final: BracketMatch | null;
@@ -175,6 +178,7 @@ export function Admin({ onLogout }: AdminProps) {
   const [showFixarPopup, setShowFixarPopup] = useState(false);
   const [verBracket, setVerBracket] = useState(false);
   const [showRefazer, setShowRefazer] = useState(false);
+  const [showSorteioOpcoes, setShowSorteioOpcoes] = useState<'uma' | 'duas' | null>(null);
   const [showPlacar, setShowPlacar] = useState<{ rIdx: number; mIdx: number; tipo?: string } | null>(null);
   const [placarA, setPlacarA] = useState('');
   const [placarB, setPlacarB] = useState('');
@@ -402,6 +406,38 @@ export function Admin({ onLogout }: AdminProps) {
   }
 
   // ── Duas Chaves ──
+  function gerarDuasChavesRR() {
+    if (duplas.length < 4) return;
+    const teams = [...duplas].sort(() => Math.random() - 0.5);
+    const half = Math.floor(teams.length / 2);
+    const grupoA = teams.slice(0, half);
+    const grupoB = teams.slice(half);
+
+    const makeJogos = (grupo: Dupla[]): RRMatch[] => {
+      const t = grupo.map((d) => ({ nome: d.jogador1 + (d.jogador2 ? ` e ${d.jogador2}` : ''), id: d.id }));
+      const jogos: RRMatch[] = [];
+      for (let i = 0; i < t.length; i++)
+        for (let j = i + 1; j < t.length; j++)
+          jogos.push({ a: t[i], b: t[j], winner: null });
+      return jogos;
+    };
+
+    const data: DuasChavesData = {
+      tipo: 'duas_chaves', subtipo: 'todos_contra_todos',
+      chaveA: [], chaveB: [],
+      jogosA: makeJogos(grupoA), jogosB: makeJogos(grupoB),
+      campeaoA: null, campeaoB: null,
+      final: { a: null, b: null, winner: null },
+    };
+    setDuasChaves(data);
+    setBracket(null);
+    setRoundRobin(null);
+    setTipoSorteio('duas_chaves');
+    setCampeao(null);
+    setVerBracket(true);
+    salvarDados(data, null);
+  }
+
   function gerarDuasChaves() {
     if (duplas.length < 4) return;
     const teams = [...duplas].sort(() => Math.random() - 0.5);
@@ -1038,20 +1074,37 @@ export function Admin({ onLogout }: AdminProps) {
 
           {/* Botoes de sorteio */}
           {duplas.length >= 2 && !tipoSorteio && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, marginBottom: 12 }}>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={sortearChave} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}>
-                  Sorteio Aleatório
-                </button>
-                <button onClick={gerarRoundRobin} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}>
-                  Todos Contra Todos
-                </button>
-              </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginBottom: 12 }}>
+              <button onClick={() => setShowSorteioOpcoes('uma')} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}>
+                Uma Chave
+              </button>
               {duplas.length >= 4 && (
-                <button onClick={gerarDuasChaves} style={{ width: '100%', padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}>
+                <button onClick={() => setShowSorteioOpcoes('duas')} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}>
                   Duas Chaves
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Popup escolher tipo de sorteio */}
+          {showSorteioOpcoes && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowSorteioOpcoes(null)}>
+              <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 320, width: '90%' }}>
+                <h3 style={{ color: BLUE, fontSize: 15, fontWeight: 700, marginBottom: 16, textAlign: 'center' }}>
+                  {showSorteioOpcoes === 'uma' ? 'Uma Chave' : 'Duas Chaves'}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={() => { setShowSorteioOpcoes(null); showSorteioOpcoes === 'uma' ? sortearChave() : gerarDuasChaves(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}>
+                    Sorteio Aleatório
+                  </button>
+                  <button onClick={() => { setShowSorteioOpcoes(null); showSorteioOpcoes === 'uma' ? gerarRoundRobin() : gerarDuasChavesRR(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}>
+                    Todos Contra Todos
+                  </button>
+                  <button onClick={() => setShowSorteioOpcoes(null)} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #ddd', fontSize: 13, color: '#999', background: '#fff', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1074,20 +1127,17 @@ export function Admin({ onLogout }: AdminProps) {
           )}
 
           {/* Popup Refazer Sorteio */}
-          {showRefazer && (
+          {showRefazer && !showSorteioOpcoes && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowRefazer(false)}>
               <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 320, width: '90%' }}>
                 <h3 style={{ color: BLUE, fontSize: 15, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Refazer Sorteio</h3>
                 <p style={{ color: '#999', fontSize: 12, marginBottom: 16, textAlign: 'center' }}>O sorteio atual sera perdido</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button onClick={() => { setShowRefazer(false); sortearChave(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}>
-                    Sorteio Aleatório
-                  </button>
-                  <button onClick={() => { setShowRefazer(false); gerarRoundRobin(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}>
-                    Todos Contra Todos
+                  <button onClick={() => { setShowRefazer(false); setShowSorteioOpcoes('uma'); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}>
+                    Uma Chave
                   </button>
                   {duplas.length >= 4 && (
-                    <button onClick={() => { setShowRefazer(false); gerarDuasChaves(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}>
+                    <button onClick={() => { setShowRefazer(false); setShowSorteioOpcoes('duas'); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}>
                       Duas Chaves
                     </button>
                   )}
