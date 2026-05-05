@@ -219,7 +219,17 @@ export function Admin({ onLogout }: AdminProps) {
 
   function selecionarTorneio(id: string) {
     setTorneioSelecionado(id);
-    carregarCategorias();
+    setCategorias([]);
+    setDuplas([]);
+    setBracket(null);
+    setCampeao(null);
+    setCategoriaSelecionada(null);
+    setVerBracket(false);
+    // carregarCategorias precisa do torneioSelecionado atualizado
+    // então usamos o id diretamente
+    supabase.from('categorias').select('*').eq('torneio_id', id).eq('ativo', true).order('nome').then(({ data }) => {
+      setCategorias(data || []);
+    });
     setEtapa('categoria');
   }
 
