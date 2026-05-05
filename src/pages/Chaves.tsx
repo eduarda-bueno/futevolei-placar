@@ -115,6 +115,15 @@ export function Chaves() {
     return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
   }
 
+  function formatarPeriodo(t: Torneio) {
+    const inicio = (t as any).data_inicio;
+    const fim = (t as any).data_fim;
+    if (inicio && fim) {
+      return `${formatarData(inicio)} a ${formatarData(fim)}`;
+    }
+    return formatarData(t.data);
+  }
+
   const torneioNome = torneios.find((t) => t.id === torneioSelecionado)?.nome || '';
   const categoriaNome = categorias.find((c) => c.id === categoriaSelecionada)?.nome || '';
 
@@ -156,7 +165,7 @@ export function Chaves() {
               }}
             >
               <span style={{ color: BLUE, fontWeight: 'bold', fontSize: 15, display: 'block' }}>{t.nome}</span>
-              <span style={{ color: '#999', fontSize: 12 }}>{formatarData(t.data)}</span>
+              <span style={{ color: '#999', fontSize: 12 }}>{formatarPeriodo(t)}</span>
             </button>
           ))}
         </div>

@@ -162,6 +162,8 @@ export function Admin({ onLogout }: AdminProps) {
   const [torneios, setTorneios] = useState<Torneio[]>([]);
   const [torneioSelecionado, setTorneioSelecionado] = useState<string | null>(null);
   const [novoTorneioNome, setNovoTorneioNome] = useState('');
+  const [novoTorneioInicio, setNovoTorneioInicio] = useState('');
+  const [novoTorneioFim, setNovoTorneioFim] = useState('');
 
   // Categorias, duplas
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -203,10 +205,16 @@ export function Admin({ onLogout }: AdminProps) {
 
   async function criarTorneio(e: React.FormEvent) {
     e.preventDefault();
-    if (!novoTorneioNome.trim()) return;
-    const hoje = new Date().toISOString().split('T')[0];
-    await supabase.from('torneios').insert({ nome: novoTorneioNome.trim(), data: hoje });
+    if (!novoTorneioNome.trim() || !novoTorneioInicio || !novoTorneioFim) return;
+    await supabase.from('torneios').insert({
+      nome: novoTorneioNome.trim(),
+      data: novoTorneioInicio,
+      data_inicio: novoTorneioInicio,
+      data_fim: novoTorneioFim,
+    });
     setNovoTorneioNome('');
+    setNovoTorneioInicio('');
+    setNovoTorneioFim('');
     carregarTorneios();
   }
 
@@ -327,6 +335,15 @@ export function Admin({ onLogout }: AdminProps) {
     return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
   }
 
+  function formatarPeriodo(t: Torneio) {
+    const inicio = (t as any).data_inicio;
+    const fim = (t as any).data_fim;
+    if (inicio && fim) {
+      return `${formatarData(inicio)} a ${formatarData(fim)}`;
+    }
+    return formatarData(t.data);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     onLogout();
@@ -441,15 +458,35 @@ export function Admin({ onLogout }: AdminProps) {
 
         <h2 style={{ color: '#fff', fontSize: 18, fontWeight: 600, marginBottom: 20, textAlign: 'center' }}>Selecione ou adicione um torneio</h2>
 
-        <form onSubmit={criarTorneio} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <form onSubmit={criarTorneio} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           <input
             type="text"
             placeholder="Nome do torneio"
             value={novoTorneioNome}
             onChange={(e) => setNovoTorneioNome(e.target.value)}
-            style={{ flex: 1, border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '12px 14px', fontSize: 14, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+            style={{ width: '100%', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '12px 14px', fontSize: 14, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
           />
-          <button type="submit" style={{ padding: '12px 20px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: BLUE, background: '#fff', cursor: 'pointer', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4, display: 'block' }}>Inicio</label>
+              <input
+                type="date"
+                value={novoTorneioInicio}
+                onChange={(e) => setNovoTorneioInicio(e.target.value)}
+                style={{ width: '100%', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '10px 12px', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4, display: 'block' }}>Fim</label>
+              <input
+                type="date"
+                value={novoTorneioFim}
+                onChange={(e) => setNovoTorneioFim(e.target.value)}
+                style={{ width: '100%', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '10px 12px', fontSize: 13, outline: 'none', background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+              />
+            </div>
+          </div>
+          <button type="submit" style={{ width: '100%', padding: '12px 20px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 'bold', color: BLUE, background: '#fff', cursor: 'pointer' }}>
             Criar
           </button>
         </form>
@@ -461,7 +498,7 @@ export function Admin({ onLogout }: AdminProps) {
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
                 <button onClick={() => selecionarTorneio(t.id)} style={{ flex: 1, textAlign: 'left', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer' }}>
                   <span style={{ color: BLUE, fontWeight: 'bold', fontSize: 15, display: 'block' }}>{t.nome}</span>
-                  <span style={{ color: '#999', fontSize: 12 }}>{formatarData(t.data)}</span>
+                  <span style={{ color: '#999', fontSize: 12 }}>{formatarPeriodo(t)}</span>
                 </button>
                 <button
                   onClick={() => { setTorneioSelecionado(t.id); setShowFixarPopup(true); }}
