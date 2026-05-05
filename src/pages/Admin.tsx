@@ -1155,6 +1155,8 @@ export function Admin({ onLogout }: AdminProps) {
                         return 'transparent';
                       };
 
+                      const isByeMatch = aIsBye || bIsBye;
+
                       return (
                         <div
                           key={mIdx}
@@ -1162,8 +1164,9 @@ export function Admin({ onLogout }: AdminProps) {
                             marginTop: mIdx === 0 ? topPad : stepSize - MATCH_H,
                             borderRadius: 8,
                             overflow: 'hidden',
-                            border: isSwapSelA || isSwapSelB ? '1px solid rgba(231,76,60,0.6)' : '1px solid rgba(255,255,255,0.2)',
-                            background: 'rgba(0,0,0,0.15)',
+                            border: isByeMatch ? '1px solid transparent' : isSwapSelA || isSwapSelB ? '1px solid rgba(231,76,60,0.6)' : '1px solid rgba(255,255,255,0.2)',
+                            background: isByeMatch ? 'transparent' : 'rgba(0,0,0,0.15)',
+                            visibility: isByeMatch ? 'hidden' : 'visible',
                           }}
                         >
                           <div
@@ -1473,8 +1476,9 @@ export function Admin({ onLogout }: AdminProps) {
                     const aB = match.a === 'BYE'; const bB = match.b === 'BYE';
                     const cA = !aB && !!match.a && !!match.b && !bB;
                     const cB = !bB && !!match.b && !!match.a && !aB;
+                    const isByeM = aB || bB;
                     return (
-                      <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
+                      <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: isByeM ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)', background: isByeM ? 'transparent' : 'rgba(0,0,0,0.15)', visibility: isByeM ? 'hidden' : 'visible' }}>
                         <div onClick={() => cA && abrirPlacarDC(chave, rIdx, mIdx)} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: aB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: cA ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.a)}
                         </div>

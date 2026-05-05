@@ -386,8 +386,10 @@ export function Chaves() {
                 const r0 = MH + BG; const ss = r0 * Math.pow(2, rIdx); const tp = (r0 / 2) * (Math.pow(2, rIdx) - 1);
                 return (
                   <div key={rIdx} style={{ flexShrink: 0, width: 160, position: 'relative' }}>
-                    {round.map((match: any, mIdx: number) => (
-                      <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
+                    {round.map((match: any, mIdx: number) => {
+                      const isBye = match.a === 'BYE' || match.b === 'BYE';
+                      return (
+                      <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: isBye ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)', background: isBye ? 'transparent' : 'rgba(0,0,0,0.15)', visibility: isBye ? 'hidden' : 'visible' }}>
                         <div style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: match.a === 'BYE' ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.a)}</span>{match.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreA}</span>}
                         </div>
@@ -395,7 +397,8 @@ export function Chaves() {
                           {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.b)}</span>{match.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreB}</span>}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                     {rIdx < rounds.length - 1 && (() => {
                       const th = tp + (round.length - 1) * ss + SH * 2;
                       return (
@@ -476,6 +479,8 @@ export function Chaves() {
                       const aIsBye = match.a === 'BYE';
                       const bIsBye = match.b === 'BYE';
 
+                      const isByeMatch = aIsBye || bIsBye;
+
                       return (
                         <div
                           key={mIdx}
@@ -483,8 +488,9 @@ export function Chaves() {
                             marginTop: mIdx === 0 ? topPad : stepSize - MATCH_H,
                             borderRadius: 8,
                             overflow: 'hidden',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            background: 'rgba(0,0,0,0.15)',
+                            border: isByeMatch ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)',
+                            background: isByeMatch ? 'transparent' : 'rgba(0,0,0,0.15)',
+                            visibility: isByeMatch ? 'hidden' : 'visible',
                           }}
                         >
                           <div
