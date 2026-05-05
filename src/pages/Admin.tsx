@@ -455,7 +455,72 @@ export function Admin({ onLogout }: AdminProps) {
     salvarDados(data, null);
   }
 
-  function selecionarVencedorDC(chave: 'A' | 'B', roundIdx: number, matchIdx: number, side: 'a' | 'b') {
+  function abrirPlacarDC(chave: 'A' | 'B', roundIdx: number, matchIdx: number) {
+    if (!duasChaves) return;
+    const rounds = chave === 'A' ? duasChaves.chaveA : duasChaves.chaveB;
+    const match = rounds[roundIdx][matchIdx];
+    if (!match.a || !match.b || match.a === 'BYE' || match.b === 'BYE') return;
+    setPlacarA(match.scoreA != null ? String(match.scoreA) : '');
+    setPlacarB(match.scoreB != null ? String(match.scoreB) : '');
+    setShowPlacar({ rIdx: roundIdx, mIdx: matchIdx, tipo: `dc_${chave}` });
+  }
+
+  function confirmarPlacarDC() {
+    if (!duasChaves || !showPlacar || !showPlacar.tipo?.startsWith('dc_')) return;
+    const chave = showPlacar.tipo === 'dc_A' ? 'A' : 'B';
+    const sA = parseInt(placarA) || 0;
+    const sB = parseInt(placarB) || 0;
+    const side: 'a' | 'b' = sA >= sB ? 'a' : 'b';
+    selecionarVencedorDC(chave, showPlacar.rIdx, showPlacar.mIdx, side, sA, sB);
+    setShowPlacar(null);
+  }
+
+  function limparPlacarDC() {
+    if (!duasChaves || !showPlacar || !showPlacar.tipo?.startsWith('dc_')) return;
+    const chave = showPlacar.tipo === 'dc_A' ? 'A' : 'B';
+    const rounds = chave === 'A' ? duasChaves.chaveA : duasChaves.chaveB;
+    const updated = rounds.map((r) => r.map((m) => ({ ...m })));
+    updated[showPlacar.rIdx][showPlacar.mIdx].scoreA = null;
+    updated[showPlacar.rIdx][showPlacar.mIdx].scoreB = null;
+    updated[showPlacar.rIdx][showPlacar.mIdx].winner = null;
+    for (let r = showPlacar.rIdx + 1; r < updated.length; r++)
+      for (const m of updated[r]) { m.winner = null; m.scoreA = null; m.scoreB = null; }
+    const propagated = propagateWinners(updated);
+    const newData: DuasChavesData = {
+      ...duasChaves,
+      ...(chave === 'A' ? { chaveA: propagated, campeaoA: null } : { chaveB: propagated, campeaoB: null }),
+      final: { ...duasChaves.final!, a: null, b: null, winner: null },
+    };
+    setDuasChaves(newData);
+    setCampeao(null);
+    salvarDados(newData, null);
+    setShowPlacar(null);
+  }
+
+  function abrirPlacarFinalDC() {
+    if (!duasChaves?.final) return;
+    const f = duasChaves.final;
+    if (!f.a || !f.b || f.a === 'BYE' || f.b === 'BYE') return;
+    setPlacarA(f.scoreA != null ? String(f.scoreA) : '');
+    setPlacarB(f.scoreB != null ? String(f.scoreB) : '');
+    setShowPlacar({ rIdx: 0, mIdx: 0, tipo: 'dc_final' });
+  }
+
+  function confirmarPlacarFinalDC() {
+    if (!duasChaves?.final || !showPlacar) return;
+    const sA = parseInt(placarA) || 0;
+    const sB = parseInt(placarB) || 0;
+    const side: 'a' | 'b' = sA >= sB ? 'a' : 'b';
+    const newFinal: BracketMatch = { ...duasChaves.final, scoreA: sA, scoreB: sB, winner: side };
+    const newData: DuasChavesData = { ...duasChaves, final: newFinal };
+    setDuasChaves(newData);
+    const champ = slotName(newFinal[side]);
+    setCampeao(champ);
+    salvarDados(newData, champ);
+    setShowPlacar(null);
+  }
+
+  function selecionarVencedorDC(chave: 'A' | 'B', roundIdx: number, matchIdx: number, side: 'a' | 'b', scoreA?: number, scoreB?: number) {
     if (!duasChaves) return;
     const rounds = chave === 'A' ? duasChaves.chaveA : duasChaves.chaveB;
     const updated = rounds.map((r) => r.map((m) => ({ ...m })));
@@ -463,7 +528,9 @@ export function Admin({ onLogout }: AdminProps) {
     const slot = match[side];
     if (!slot || slot === 'BYE') return;
 
-    if (updated[roundIdx][matchIdx].winner === side) {
+    updated[roundIdx][matchIdx].scoreA = scoreA ?? null;
+    updated[roundIdx][matchIdx].scoreB = scoreB ?? null;
+    if (updated[roundIdx][matchIdx].winner === side && scoreA == null) {
       updated[roundIdx][matchIdx].winner = null;
     } else {
       updated[roundIdx][matchIdx].winner = side;
@@ -503,17 +570,6 @@ export function Admin({ onLogout }: AdminProps) {
     salvarDados(newData, campGeral);
   }
 
-  function selecionarVencedorFinalDC(side: 'a' | 'b') {
-    if (!duasChaves?.final) return;
-    const f = duasChaves.final;
-    if (!f.a || !f.b || f.a === 'BYE' || f.b === 'BYE') return;
-    const newFinal: BracketMatch = { ...f, winner: f.winner === side ? null : side };
-    const newData: DuasChavesData = { ...duasChaves, final: newFinal };
-    setDuasChaves(newData);
-    const champ = newFinal.winner ? slotName(newFinal[newFinal.winner]) : null;
-    setCampeao(champ);
-    salvarDados(newData, champ);
-  }
 
   function selecionarCategoriaPrincipal(nome: string) {
     setCategoriaPrincipal(nome);
@@ -1448,10 +1504,10 @@ export function Admin({ onLogout }: AdminProps) {
                     const cB = !bB && !!match.b && !!match.a && !aB;
                     return (
                       <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.15)' }}>
-                        <div onClick={() => cA && selecionarVencedorDC(chave, rIdx, mIdx, 'a')} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: aB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: cA ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div onClick={() => cA && abrirPlacarDC(chave, rIdx, mIdx)} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: aB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: cA ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.a)}
                         </div>
-                        <div onClick={() => cB && selecionarVencedorDC(chave, rIdx, mIdx, 'b')} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: bB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: cB ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div onClick={() => cB && abrirPlacarDC(chave, rIdx, mIdx)} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: bB ? 'rgba(255,255,255,0.2)' : '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: cB ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(match.b)}
                         </div>
                       </div>
@@ -1501,13 +1557,13 @@ export function Admin({ onLogout }: AdminProps) {
                   <h3 style={{ color: '#ffd700', fontSize: 12, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Final</h3>
                   <div style={{ borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,215,0,0.4)', background: 'rgba(0,0,0,0.2)', width: 150 }}>
                     <div
-                      onClick={() => canF && selecionarVencedorFinalDC('a')}
+                      onClick={() => canF && abrirPlacarFinalDC()}
                       style={{ padding: '0 10px', height: 32, fontSize: 12, fontWeight: f?.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: f?.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canF ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
                       {f?.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(f?.a || null)}
                     </div>
                     <div
-                      onClick={() => canF && selecionarVencedorFinalDC('b')}
+                      onClick={() => canF && abrirPlacarFinalDC()}
                       style={{ padding: '0 10px', height: 32, fontSize: 12, fontWeight: f?.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: f?.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: canF ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
                       {f?.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}{slotName(f?.b || null)}
@@ -1522,6 +1578,42 @@ export function Admin({ onLogout }: AdminProps) {
                 </div>
               </div>
             </div>
+          {/* Popup Placar DC */}
+          {showPlacar?.tipo?.startsWith('dc_') && (() => {
+            let nA = '—', nB = '—';
+            if (showPlacar.tipo === 'dc_final' && duasChaves.final) {
+              nA = slotName(duasChaves.final.a);
+              nB = slotName(duasChaves.final.b);
+            } else {
+              const ch = showPlacar.tipo === 'dc_A' ? duasChaves.chaveA : duasChaves.chaveB;
+              const m = ch[showPlacar.rIdx][showPlacar.mIdx];
+              nA = slotName(m.a);
+              nB = slotName(m.b);
+            }
+            const isFinal = showPlacar.tipo === 'dc_final';
+            return (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowPlacar(null)}>
+                <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 300, width: '90%', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{nA}</div>
+                      <input type="number" min="0" value={placarA} onChange={(e) => setPlacarA(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                    </div>
+                    <span style={{ color: '#999', fontSize: 14, fontWeight: 'bold' }}>x</span>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{nB}</div>
+                      <input type="number" min="0" value={placarB} onChange={(e) => setPlacarB(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={isFinal ? confirmarPlacarFinalDC : confirmarPlacarDC} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}>Confirmar</button>
+                    <button onClick={isFinal ? () => { setShowPlacar(null); } : limparPlacarDC} style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #e74c3c', fontSize: 12, fontWeight: 'bold', color: '#e74c3c', background: '#fff', cursor: 'pointer' }}>Limpar</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Estatisticas Duas Chaves */}
           <button
             onClick={() => setShowStats(true)}
