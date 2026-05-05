@@ -47,6 +47,8 @@ interface RRMatch {
   a: { nome: string; id: string };
   b: { nome: string; id: string };
   winner: 'a' | 'b' | null;
+  scoreA?: number | null;
+  scoreB?: number | null;
 }
 
 interface RoundRobinData {
@@ -190,7 +192,7 @@ export function Admin({ onLogout }: AdminProps) {
   const [showFixarPopup, setShowFixarPopup] = useState(false);
   const [verBracket, setVerBracket] = useState(false);
   const [showRefazer, setShowRefazer] = useState(false);
-  const [showPlacar, setShowPlacar] = useState<{ rIdx: number; mIdx: number; section?: string } | null>(null);
+  const [showPlacar, setShowPlacar] = useState<{ rIdx: number; mIdx: number; tipo?: string } | null>(null);
   const [placarA, setPlacarA] = useState('');
   const [placarB, setPlacarB] = useState('');
   const [showStats, setShowStats] = useState(false);
@@ -350,12 +352,26 @@ export function Admin({ onLogout }: AdminProps) {
     salvarDados(data, null);
   }
 
-  function selecionarVencedorRR(idx: number, side: 'a' | 'b') {
+  function abrirPlacarRR(idx: number) {
     if (!roundRobin) return;
-    const updated = { ...roundRobin, jogos: roundRobin.jogos.map((j, i) => i === idx ? { ...j, winner: j.winner === side ? null : side } : j) };
+    const jogo = roundRobin.jogos[idx];
+    setPlacarA(jogo.scoreA != null ? String(jogo.scoreA) : '');
+    setPlacarB(jogo.scoreB != null ? String(jogo.scoreB) : '');
+    setShowPlacar({ rIdx: idx, mIdx: 0, tipo: 'rr' });
+  }
+
+  function confirmarPlacarRR() {
+    if (!roundRobin || !showPlacar) return;
+    const idx = showPlacar.rIdx;
+    const sA = parseInt(placarA) || 0;
+    const sB = parseInt(placarB) || 0;
+    const winner: 'a' | 'b' = sA >= sB ? 'a' : 'b';
+
+    const updated = { ...roundRobin, jogos: roundRobin.jogos.map((j, i) =>
+      i === idx ? { ...j, scoreA: sA, scoreB: sB, winner } : j
+    )};
     setRoundRobin(updated);
 
-    // Calcular classificacao e ver se tem campeao
     const stats: Record<string, { nome: string; v: number }> = {};
     let todosJogados = true;
     for (const j of updated.jogos) {
@@ -370,22 +386,36 @@ export function Admin({ onLogout }: AdminProps) {
       : null;
     setCampeao(champ);
     salvarDados(updated, champ);
+    setShowPlacar(null);
   }
 
-  function getClassificacao(): { nome: string; v: number; d: number; j: number }[] {
+  function limparPlacarRR() {
+    if (!roundRobin || !showPlacar) return;
+    const idx = showPlacar.rIdx;
+    const updated = { ...roundRobin, jogos: roundRobin.jogos.map((j, i) =>
+      i === idx ? { ...j, scoreA: null, scoreB: null, winner: null } : j
+    )};
+    setRoundRobin(updated);
+    setCampeao(null);
+    salvarDados(updated, null);
+    setShowPlacar(null);
+  }
+
+  function getClassificacaoRR(): { nome: string; v: number; d: number; j: number; pts: number; ptsSof: number }[] {
     if (!roundRobin) return [];
-    const stats: Record<string, { nome: string; v: number; d: number; j: number }> = {};
+    const stats: Record<string, { nome: string; v: number; d: number; j: number; pts: number; ptsSof: number }> = {};
     for (const jogo of roundRobin.jogos) {
-      if (!stats[jogo.a.id]) stats[jogo.a.id] = { nome: jogo.a.nome, v: 0, d: 0, j: 0 };
-      if (!stats[jogo.b.id]) stats[jogo.b.id] = { nome: jogo.b.nome, v: 0, d: 0, j: 0 };
+      if (!stats[jogo.a.id]) stats[jogo.a.id] = { nome: jogo.a.nome, v: 0, d: 0, j: 0, pts: 0, ptsSof: 0 };
+      if (!stats[jogo.b.id]) stats[jogo.b.id] = { nome: jogo.b.nome, v: 0, d: 0, j: 0, pts: 0, ptsSof: 0 };
       if (jogo.winner) {
-        stats[jogo.a.id].j++;
-        stats[jogo.b.id].j++;
+        stats[jogo.a.id].j++; stats[jogo.b.id].j++;
+        stats[jogo.a.id].pts += jogo.scoreA || 0; stats[jogo.a.id].ptsSof += jogo.scoreB || 0;
+        stats[jogo.b.id].pts += jogo.scoreB || 0; stats[jogo.b.id].ptsSof += jogo.scoreA || 0;
         if (jogo.winner === 'a') { stats[jogo.a.id].v++; stats[jogo.b.id].d++; }
         else { stats[jogo.b.id].v++; stats[jogo.a.id].d++; }
       }
     }
-    return Object.values(stats).sort((a, b) => b.v - a.v);
+    return Object.values(stats).sort((a, b) => b.v - a.v || b.pts - a.pts);
   }
 
   // ── Duas Chaves ──
@@ -1317,20 +1347,22 @@ export function Admin({ onLogout }: AdminProps) {
           <div style={{ marginBottom: 16, flexShrink: 0 }}>
             <h3 style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Classificacao</h3>
             <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
-                <span style={{ width: 24 }}>#</span>
+              <div style={{ display: 'flex', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                <span style={{ width: 22 }}>#</span>
                 <span style={{ flex: 1 }}>Dupla</span>
-                <span style={{ width: 30, textAlign: 'center' }}>V</span>
-                <span style={{ width: 30, textAlign: 'center' }}>D</span>
-                <span style={{ width: 30, textAlign: 'center' }}>J</span>
+                <span style={{ width: 28, textAlign: 'center' }}>V</span>
+                <span style={{ width: 28, textAlign: 'center' }}>D</span>
+                <span style={{ width: 34, textAlign: 'center' }}>Pts</span>
+                <span style={{ width: 34, textAlign: 'center' }}>Sof</span>
               </div>
-              {getClassificacao().map((s, i) => (
-                <div key={i} style={{ display: 'flex', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 13, color: '#fff', fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.15)' : 'transparent' }}>
-                  <span style={{ width: 24, color: 'rgba(255,255,255,0.4)' }}>{i + 1}</span>
+              {getClassificacaoRR().map((s, i) => (
+                <div key={i} style={{ display: 'flex', padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 13, color: '#fff', fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.15)' : 'transparent' }}>
+                  <span style={{ width: 22, color: 'rgba(255,255,255,0.4)' }}>{i + 1}</span>
                   <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nome}</span>
-                  <span style={{ width: 30, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span>
-                  <span style={{ width: 30, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span>
-                  <span style={{ width: 30, textAlign: 'center' }}>{s.j}</span>
+                  <span style={{ width: 28, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span>
+                  <span style={{ width: 28, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span>
+                  <span style={{ width: 34, textAlign: 'center' }}>{s.pts}</span>
+                  <span style={{ width: 34, textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>{s.ptsSof}</span>
                 </div>
               ))}
             </div>
@@ -1340,51 +1372,51 @@ export function Admin({ onLogout }: AdminProps) {
           <h3 style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>Jogos</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflow: 'auto', flex: 1 }}>
             {roundRobin.jogos.map((jogo, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <button
-                  onClick={() => selecionarVencedorRR(idx, 'a')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    fontSize: 13,
-                    fontWeight: jogo.winner === 'a' ? 'bold' : 'normal',
-                    color: '#fff',
-                    background: jogo.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent',
-                    border: 'none',
-                    borderRight: '1px solid rgba(255,255,255,0.1)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {jogo.winner === 'a' && '✓ '}{jogo.a.nome}
-                </button>
-                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, padding: '0 8px' }}>vs</span>
-                <button
-                  onClick={() => selecionarVencedorRR(idx, 'b')}
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    fontSize: 13,
-                    fontWeight: jogo.winner === 'b' ? 'bold' : 'normal',
-                    color: '#fff',
-                    background: jogo.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent',
-                    border: 'none',
-                    borderLeft: '1px solid rgba(255,255,255,0.1)',
-                    cursor: 'pointer',
-                    textAlign: 'right',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {jogo.b.nome}{jogo.winner === 'b' && ' ✓'}
-                </button>
+              <div
+                key={idx}
+                onClick={() => abrirPlacarRR(idx)}
+                style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              >
+                <div style={{ flex: 1, padding: '10px 12px', fontSize: 13, fontWeight: jogo.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: jogo.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center' }}>
+                  {jogo.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{jogo.a.nome}</span>
+                  {jogo.scoreA != null && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{jogo.scoreA}</span>}
+                </div>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, padding: '0 6px' }}>x</span>
+                <div style={{ flex: 1, padding: '10px 12px', fontSize: 13, fontWeight: jogo.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: jogo.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', borderLeft: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  {jogo.scoreB != null && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginRight: 4 }}>{jogo.scoreB}</span>}
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{jogo.b.nome}</span>
+                  {jogo.winner === 'b' && <span style={{ color: '#2ecc71', marginLeft: 4 }}>✓</span>}
+                </div>
               </div>
             ))}
           </div>
+
+          {/* Popup Placar RR */}
+          {showPlacar?.tipo === 'rr' && roundRobin && (() => {
+            const jogo = roundRobin.jogos[showPlacar.rIdx];
+            return (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowPlacar(null)}>
+                <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 300, width: '90%', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{jogo.a.nome}</div>
+                      <input type="number" min="0" value={placarA} onChange={(e) => setPlacarA(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                    </div>
+                    <span style={{ color: '#999', fontSize: 14, fontWeight: 'bold' }}>x</span>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{jogo.b.nome}</div>
+                      <input type="number" min="0" value={placarB} onChange={(e) => setPlacarB(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={confirmarPlacarRR} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}>Confirmar</button>
+                    {jogo.winner && <button onClick={limparPlacarRR} style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #e74c3c', fontSize: 12, fontWeight: 'bold', color: '#e74c3c', background: '#fff', cursor: 'pointer' }}>Limpar</button>}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
 
@@ -1478,6 +1510,38 @@ export function Admin({ onLogout }: AdminProps) {
                 </div>
               </div>
             </div>
+          {/* Estatisticas Duas Chaves */}
+          <button
+            onClick={() => setShowStats(true)}
+            style={{ width: '100%', padding: 14, borderRadius: 12, border: '2px solid rgba(255,255,255,0.3)', fontSize: 14, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer', marginTop: 12, flexShrink: 0 }}
+          >
+            Estatisticas
+          </button>
+
+          {showStats && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowStats(false)}>
+              <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '20px 16px', maxWidth: 420, width: '95%', maxHeight: '80vh', overflow: 'auto' }}>
+                <h3 style={{ color: BLUE, fontSize: 16, fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>Estatisticas</h3>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, justifyContent: 'center' }}>
+                  {(['v', 'd', 'pts'] as const).map((s) => (
+                    <button key={s} onClick={() => setStatsSort(s)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 'bold', cursor: 'pointer', background: statsSort === s ? BLUE : '#eee', color: statsSort === s ? '#fff' : '#666' }}>
+                      {s === 'v' ? 'Vitorias' : s === 'd' ? 'Derrotas' : 'Pontos'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', padding: '8px 10px', background: '#f5f5f5', fontSize: 11, fontWeight: 600, color: '#999' }}>
+                    <span style={{ width: 22 }}>#</span><span style={{ flex: 1 }}>Dupla</span><span style={{ width: 28, textAlign: 'center' }}>V</span><span style={{ width: 28, textAlign: 'center' }}>D</span><span style={{ width: 36, textAlign: 'center' }}>Pts</span><span style={{ width: 36, textAlign: 'center' }}>Sof</span>
+                  </div>
+                  {getAllStats().map((s, i) => (
+                    <div key={i} style={{ display: 'flex', padding: '8px 10px', borderTop: '1px solid #f0f0f0', fontSize: 13, color: BLUE, fontWeight: i === 0 ? 'bold' : 'normal', background: i === 0 ? 'rgba(46,204,113,0.08)' : '#fff' }}>
+                      <span style={{ width: 22, color: '#999' }}>{i + 1}</span><span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nome}</span><span style={{ width: 28, textAlign: 'center', color: '#2ecc71' }}>{s.v}</span><span style={{ width: 28, textAlign: 'center', color: '#e74c3c' }}>{s.d}</span><span style={{ width: 36, textAlign: 'center' }}>{s.pts}</span><span style={{ width: 36, textAlign: 'center', color: '#999' }}>{s.ptsSofridos}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           </>
         );
       })()}
