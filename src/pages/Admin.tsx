@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useFooter } from '../App';
 
 interface Torneio {
   id: string;
@@ -177,6 +178,12 @@ export function Admin({ onLogout }: AdminProps) {
   const [trocaSelecionada, setTrocaSelecionada] = useState<{ round: number; match: number; side: 'a' | 'b' } | null>(null);
   const [showFixarPopup, setShowFixarPopup] = useState(false);
   const [verBracket, setVerBracket] = useState(false);
+  const { setHideFooter } = useFooter();
+
+  useEffect(() => {
+    setHideFooter(verBracket);
+    return () => setHideFooter(false);
+  }, [verBracket]);
 
   useEffect(() => {
     carregarTorneios();
@@ -663,7 +670,9 @@ export function Admin({ onLogout }: AdminProps) {
             <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
               <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
               <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>Campeão!</div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+              </div>
             </div>
           )}
 

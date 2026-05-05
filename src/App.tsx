@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { PlacarRapido } from './pages/PlacarRapido';
@@ -8,10 +8,21 @@ import { Admin } from './pages/Admin';
 
 const LOGO_BG = '#2a5082';
 
+// Contexto para esconder o footer
+const FooterContext = createContext<{ hideFooter: boolean; setHideFooter: (v: boolean) => void }>({
+  hideFooter: false,
+  setHideFooter: () => {},
+});
+
+export function useFooter() {
+  return useContext(FooterContext);
+}
+
 function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const current = location.pathname;
+  const { hideFooter } = useContext(FooterContext);
 
   return (
     <div
@@ -42,77 +53,81 @@ function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
 
-        {/* Wave separator */}
-        <svg
-          viewBox="0 0 400 20"
-          preserveAspectRatio="none"
-          style={{ width: '100%', height: 14, flexShrink: 0, display: 'block' }}
-        >
-          <path
-            d="M0,10 C50,0 100,20 150,10 C200,0 250,20 300,10 C350,0 400,20 400,10"
-            fill="none"
-            stroke="rgba(255,255,255,0.25)"
-            strokeWidth="1.5"
-          />
-        </svg>
+        {!hideFooter && (
+          <>
+            {/* Wave separator */}
+            <svg
+              viewBox="0 0 400 20"
+              preserveAspectRatio="none"
+              style={{ width: '100%', height: 14, flexShrink: 0, display: 'block' }}
+            >
+              <path
+                d="M0,10 C50,0 100,20 150,10 C200,0 250,20 300,10 C350,0 400,20 400,10"
+                fill="none"
+                stroke="rgba(255,255,255,0.25)"
+                strokeWidth="1.5"
+              />
+            </svg>
 
-        {/* Footer Nav */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 40,
-            paddingTop: 8,
-            flexShrink: 0,
-          }}
-        >
-          <div
-            onClick={() => navigate('/')}
-            style={{
-              color: '#fff',
-              textAlign: 'center',
-              fontSize: 11,
-              width: 70,
-              cursor: 'pointer',
-              opacity: current === '/' ? 1 : 0.5,
-            }}
-          >
-            <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>📋</span>
-            Placar
-          </div>
-          <div
-            onClick={() => navigate('/chaves')}
-            style={{
-              color: '#fff',
-              textAlign: 'center',
-              fontSize: 11,
-              width: 70,
-              cursor: 'pointer',
-              opacity: current === '/chaves' ? 1 : 0.5,
-            }}
-          >
-            <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚽</span>
-            Jogos
-          </div>
-          <div
-            onClick={() => navigate('/admin')}
-            style={{
-              color: '#fff',
-              textAlign: 'center',
-              fontSize: 11,
-              width: 70,
-              cursor: 'pointer',
-              opacity: current === '/admin' ? 1 : 0.5,
-            }}
-          >
-            <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚙️</span>
-            Config
-          </div>
-        </div>
-        <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, paddingBottom: 4 }}>
-          desenvolvido por Duda
-        </p>
+            {/* Footer Nav */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 40,
+                paddingTop: 8,
+                flexShrink: 0,
+              }}
+            >
+              <div
+                onClick={() => navigate('/')}
+                style={{
+                  color: '#fff',
+                  textAlign: 'center',
+                  fontSize: 11,
+                  width: 70,
+                  cursor: 'pointer',
+                  opacity: current === '/' ? 1 : 0.5,
+                }}
+              >
+                <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>📋</span>
+                Placar
+              </div>
+              <div
+                onClick={() => navigate('/chaves')}
+                style={{
+                  color: '#fff',
+                  textAlign: 'center',
+                  fontSize: 11,
+                  width: 70,
+                  cursor: 'pointer',
+                  opacity: current === '/chaves' ? 1 : 0.5,
+                }}
+              >
+                <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚽</span>
+                Jogos
+              </div>
+              <div
+                onClick={() => navigate('/admin')}
+                style={{
+                  color: '#fff',
+                  textAlign: 'center',
+                  fontSize: 11,
+                  width: 70,
+                  cursor: 'pointer',
+                  opacity: current === '/admin' ? 1 : 0.5,
+                }}
+              >
+                <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>⚙️</span>
+                Config
+              </div>
+            </div>
+            <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, paddingBottom: 4 }}>
+              desenvolvido por Duda
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -137,17 +152,21 @@ function AdminRoute() {
 }
 
 function App() {
+  const [hideFooter, setHideFooter] = useState(false);
+
   return (
-    <BrowserRouter>
-      <AppLayout>
-        <Routes>
-          <Route path="/" element={<PlacarRapido />} />
-          <Route path="/chaves" element={<Chaves />} />
-          <Route path="/admin" element={<AdminRoute />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppLayout>
-    </BrowserRouter>
+    <FooterContext.Provider value={{ hideFooter, setHideFooter }}>
+      <BrowserRouter>
+        <AppLayout>
+          <Routes>
+            <Route path="/" element={<PlacarRapido />} />
+            <Route path="/chaves" element={<Chaves />} />
+            <Route path="/admin" element={<AdminRoute />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppLayout>
+      </BrowserRouter>
+    </FooterContext.Provider>
   );
 }
 

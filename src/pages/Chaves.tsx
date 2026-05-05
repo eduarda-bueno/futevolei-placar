@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useFooter } from '../App';
 
 const BLUE = '#113776';
 
@@ -41,6 +42,12 @@ type Tela = 'torneios' | 'categorias' | 'bracket';
 
 export function Chaves() {
   const [tela, setTela] = useState<Tela>('torneios');
+  const { setHideFooter } = useFooter();
+
+  useEffect(() => {
+    setHideFooter(tela === 'bracket');
+    return () => setHideFooter(false);
+  }, [tela]);
 
   // Torneios
   const [torneios, setTorneios] = useState<Torneio[]>([]);
@@ -239,7 +246,9 @@ export function Chaves() {
             <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
               <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
               <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>Campeao!</div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+              </div>
             </div>
           )}
 
