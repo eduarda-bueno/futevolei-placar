@@ -197,6 +197,7 @@ export function Admin({ onLogout }: AdminProps) {
   const [trocaSelecionada, setTrocaSelecionada] = useState<{ round: number; match: number; side: 'a' | 'b' } | null>(null);
   const [showFixarPopup, setShowFixarPopup] = useState(false);
   const [verBracket, setVerBracket] = useState(false);
+  const [showRefazer, setShowRefazer] = useState(false);
   const [showPlacar, setShowPlacar] = useState<{ rIdx: number; mIdx: number; section?: string } | null>(null);
   const [placarA, setPlacarA] = useState('');
   const [placarB, setPlacarB] = useState('');
@@ -924,30 +925,65 @@ export function Admin({ onLogout }: AdminProps) {
           )}
 
           {/* Botoes de sorteio */}
-          {duplas.length >= 2 && (
+          {duplas.length >= 2 && !tipoSorteio && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, marginBottom: 12 }}>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; sortearChave(); }}
-                  style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}
-                >
+                <button onClick={sortearChave} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}>
                   Sorteio Aleatório
                 </button>
-                <button
-                  onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; gerarRoundRobin(); }}
-                  style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}
-                >
+                <button onClick={gerarRoundRobin} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}>
                   Todos Contra Todos
                 </button>
               </div>
               {duplas.length >= 4 && (
-                <button
-                  onClick={() => { if (tipoSorteio && !confirm('Refazer o sorteio? O atual sera perdido.')) return; gerarDuasChaves(); }}
-                  style={{ width: '100%', padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}
-                >
+                <button onClick={gerarDuasChaves} style={{ width: '100%', padding: 10, borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}>
                   Duas Chaves
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Ja tem sorteio: Visualizar + Refazer */}
+          {tipoSorteio && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginBottom: 12 }}>
+              <button
+                onClick={() => setVerBracket(true)}
+                style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}
+              >
+                Visualizar Sorteio
+              </button>
+              <button
+                onClick={() => setShowRefazer(true)}
+                style={{ flex: 1, padding: 12, borderRadius: 10, border: '2px solid rgba(255,255,255,0.3)', fontSize: 13, fontWeight: 'bold', color: '#fff', background: 'transparent', cursor: 'pointer' }}
+              >
+                Refazer Sorteio
+              </button>
+            </div>
+          )}
+
+          {/* Popup Refazer Sorteio */}
+          {showRefazer && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowRefazer(false)}>
+              <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 320, width: '90%' }}>
+                <h3 style={{ color: BLUE, fontSize: 15, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Refazer Sorteio</h3>
+                <p style={{ color: '#999', fontSize: 12, marginBottom: 16, textAlign: 'center' }}>O sorteio atual sera perdido</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={() => { setShowRefazer(false); sortearChave(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#e67e22', cursor: 'pointer' }}>
+                    Sorteio Aleatório
+                  </button>
+                  <button onClick={() => { setShowRefazer(false); gerarRoundRobin(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#3498db', cursor: 'pointer' }}>
+                    Todos Contra Todos
+                  </button>
+                  {duplas.length >= 4 && (
+                    <button onClick={() => { setShowRefazer(false); gerarDuasChaves(); }} style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 'bold', color: '#fff', background: '#9b59b6', cursor: 'pointer' }}>
+                      Duas Chaves
+                    </button>
+                  )}
+                  <button onClick={() => setShowRefazer(false)} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #ddd', fontSize: 13, color: '#999', background: '#fff', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </>
