@@ -191,6 +191,7 @@ export function Admin({ onLogout }: AdminProps) {
   const [placarB, setPlacarB] = useState('');
   const [showStats, setShowStats] = useState(false);
   const [statsSort, setStatsSort] = useState<'v' | 'd' | 'pts'>('v');
+  const [thirdPlace, setThirdPlace] = useState<BracketMatch | null>(null);
   const [roundRobin, setRoundRobin] = useState<RoundRobinData | null>(null);
   const [duasChaves, setDuasChaves] = useState<DuasChavesData | null>(null);
   const [duplaElim, setDuplaElim] = useState<DuplaElimData | null>(null);
@@ -1376,35 +1377,81 @@ export function Admin({ onLogout }: AdminProps) {
       {/* ── Modo: Chave do torneio ── */}
       {bracket && verBracket && (
         <>
-          {/* Campeão + Terceiro Lugar */}
-          {campeao && !modoTroca && (() => {
-            // Terceiro lugar: perdedores da semifinal (penúltima rodada)
-            let terceiro: string | null = null;
+          {/* Podio + Disputa 3o lugar */}
+          {!modoTroca && (() => {
+            // Segundo lugar: perdedor da final
+            const finalMatch = bracket ? bracket[bracket.length - 1][0] : null;
+            const segundo = finalMatch?.winner ? slotName(finalMatch.winner === 'a' ? finalMatch.b : finalMatch.a) : null;
+
+            // Perdedores da semifinal para disputa de 3º
+            let semiLoserA: BracketSlot = null;
+            let semiLoserB: BracketSlot = null;
             if (bracket && bracket.length >= 2) {
               const semi = bracket[bracket.length - 2];
-              const semiLosers: string[] = [];
+              const losers: BracketSlot[] = [];
               for (const m of semi) {
                 if (m.winner && m.a && m.b && m.a !== 'BYE' && m.b !== 'BYE') {
-                  const loser = m.winner === 'a' ? m.b : m.a;
-                  if (loser) semiLosers.push(slotName(loser));
+                  losers.push(m.winner === 'a' ? m.b : m.a);
                 }
               }
-              if (semiLosers.length > 0) terceiro = semiLosers.join(' / ');
+              if (losers.length >= 2) { semiLoserA = losers[0]; semiLoserB = losers[1]; }
             }
+
+            // Auto-preencher thirdPlace match
+            if (semiLoserA && semiLoserB && (!thirdPlace || slotName(thirdPlace.a) !== slotName(semiLoserA) || slotName(thirdPlace.b) !== slotName(semiLoserB))) {
+              setTimeout(() => setThirdPlace({ a: semiLoserA, b: semiLoserB, winner: null }), 0);
+            }
+
+            const canClick3 = thirdPlace && thirdPlace.a && thirdPlace.b;
+            const terceiroNome = thirdPlace?.winner ? slotName(thirdPlace[thirdPlace.winner]) : null;
+
             return (
               <>
-                <div style={{ textAlign: 'center', marginBottom: 8, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
-                  <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
-                  <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
-                  <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
-                    {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+                {/* Campeao */}
+                {campeao && (
+                  <div style={{ textAlign: 'center', marginBottom: 6, padding: 14, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+                    <div style={{ fontSize: 24, marginBottom: 2 }}>🏆</div>
+                    <div style={{ color: '#ffd700', fontSize: 18, fontWeight: 'bold' }}>{campeao}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>
+                      {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs' : 'Campeões'}
+                    </div>
                   </div>
-                </div>
-                {terceiro && (
-                  <div style={{ textAlign: 'center', marginBottom: 16, padding: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 10, flexShrink: 0 }}>
+                )}
+                {/* Segundo */}
+                {segundo && (
+                  <div style={{ textAlign: 'center', marginBottom: 6, padding: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 10, flexShrink: 0 }}>
+                    <div style={{ fontSize: 16, marginBottom: 2 }}>🥈</div>
+                    <div style={{ color: '#c0c0c0', fontSize: 14, fontWeight: 'bold' }}>{segundo}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>Segundo lugar</div>
+                  </div>
+                )}
+                {/* Disputa 3o lugar */}
+                {semiLoserA && semiLoserB && (
+                  <div style={{ textAlign: 'center', marginBottom: 6, flexShrink: 0 }}>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Disputa 3º lugar</div>
+                    <div
+                      onClick={() => canClick3 && (() => {
+                        setPlacarA(thirdPlace?.scoreA != null ? String(thirdPlace.scoreA) : '');
+                        setPlacarB(thirdPlace?.scoreB != null ? String(thirdPlace.scoreB) : '');
+                        setShowPlacar({ rIdx: 0, mIdx: 0, tipo: 'third' });
+                      })()}
+                      style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(205,127,50,0.4)', background: 'rgba(0,0,0,0.15)', maxWidth: 220, margin: '0 auto', cursor: canClick3 ? 'pointer' : 'default' }}
+                    >
+                      <div style={{ padding: '0 10px', height: 28, fontSize: 12, fontWeight: thirdPlace?.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: thirdPlace?.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center' }}>
+                        {thirdPlace?.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1 }}>{slotName(semiLoserA)}</span>{thirdPlace?.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{thirdPlace.scoreA}</span>}
+                      </div>
+                      <div style={{ padding: '0 10px', height: 28, fontSize: 12, fontWeight: thirdPlace?.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: thirdPlace?.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center' }}>
+                        {thirdPlace?.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1 }}>{slotName(semiLoserB)}</span>{thirdPlace?.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{thirdPlace.scoreB}</span>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Terceiro */}
+                {terceiroNome && (
+                  <div style={{ textAlign: 'center', marginBottom: 12, padding: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 10, flexShrink: 0 }}>
                     <div style={{ fontSize: 16, marginBottom: 2 }}>🥉</div>
-                    <div style={{ color: '#cd7f32', fontSize: 14, fontWeight: 'bold' }}>{terceiro}</div>
-                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 }}>Terceiro lugar</div>
+                    <div style={{ color: '#cd7f32', fontSize: 14, fontWeight: 'bold' }}>{terceiroNome}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>Terceiro lugar</div>
                   </div>
                 )}
               </>
@@ -1637,8 +1684,32 @@ export function Admin({ onLogout }: AdminProps) {
             </div>
           )}
 
+          {/* Popup Placar 3o lugar */}
+          {showPlacar?.tipo === 'third' && thirdPlace && (() => {
+            return (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowPlacar(null)}>
+                <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 300, width: '90%', textAlign: 'center' }}>
+                  <div style={{ color: '#cd7f32', fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Disputa 3º lugar</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: 1 }}><div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{slotName(thirdPlace.a)}</div><input type="number" min="0" value={placarA} onChange={(e) => setPlacarA(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} /></div>
+                    <span style={{ color: '#999', fontSize: 14, fontWeight: 'bold' }}>x</span>
+                    <div style={{ flex: 1 }}><div style={{ color: BLUE, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{slotName(thirdPlace.b)}</div><input type="number" min="0" value={placarB} onChange={(e) => setPlacarB(e.target.value)} style={{ width: 60, textAlign: 'center', border: `2px solid ${BLUE}`, borderRadius: 8, padding: 8, fontSize: 20, fontWeight: 'bold' }} /></div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => {
+                      const sA = parseInt(placarA) || 0; const sB = parseInt(placarB) || 0;
+                      setThirdPlace({ ...thirdPlace, scoreA: sA, scoreB: sB, winner: sA >= sB ? 'a' : 'b' });
+                      setShowPlacar(null);
+                    }} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', fontSize: 14, fontWeight: 'bold', color: '#fff', background: '#2ecc71', cursor: 'pointer' }}>Confirmar</button>
+                    <button onClick={() => { setThirdPlace({ ...thirdPlace, winner: null, scoreA: null, scoreB: null }); setShowPlacar(null); }} style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #e74c3c', fontSize: 12, fontWeight: 'bold', color: '#e74c3c', background: '#fff', cursor: 'pointer' }}>Limpar</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Popup Placar */}
-          {showPlacar && bracket && (() => {
+          {showPlacar && showPlacar.tipo !== 'third' && bracket && (() => {
             const m = bracket[showPlacar.rIdx][showPlacar.mIdx];
             return (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowPlacar(null)}>
