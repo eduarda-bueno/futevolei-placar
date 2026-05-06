@@ -420,67 +420,115 @@ export function Admin({ onLogout }: AdminProps) {
   function gerarDuplaEliminacao() {
     if (duplas.length < 3) return;
     const winners = propagateWinners(buildBracket(duplas));
-    // Losers bracket: starts empty, will be populated as winners matches complete
-    const numWinnersRounds = winners.length;
+    // Losers built dynamically
     const losers: BracketMatch[][] = [];
-    // For each winners round (except final), there's a losers round
-    for (let i = 0; i < numWinnersRounds - 1; i++) {
-      const numMatches = Math.max(1, Math.ceil(winners[i].length / 2));
-      const round: BracketMatch[] = [];
-      for (let j = 0; j < numMatches; j++) {
-        round.push({ a: null, b: null, winner: null });
-      }
-      losers.push(round);
-    }
     const data: DuplaElimData = { tipo: 'dupla_eliminacao', winners, losers, grandFinal: { a: null, b: null, winner: null } };
-    setDuplaElim(data);
+    const propagated = propagateDuplaElim(data);
+    setDuplaElim(propagated);
     setBracket(null); setRoundRobin(null); setDuasChaves(null);
     setTipoSorteio('dupla_eliminacao');
     setCampeao(null);
     setVerBracket(true);
-    salvarDados(data, null);
+    salvarDados(propagated, null);
   }
 
   function propagateDuplaElim(de: DuplaElimData): DuplaElimData {
     const w = propagateWinners(de.winners);
-    const l = de.losers.map(r => r.map(m => ({ ...m })));
 
-    // Collect losers from winners bracket
-    const allLosers: BracketSlot[] = [];
-    for (const round of w) {
-      for (const match of round) {
+    // Collect losers BY ROUND from winners
+    const losersByRound: BracketSlot[][] = [];
+    for (let r = 0; r < w.length - 1; r++) { // exclude final
+      const roundLosers: BracketSlot[] = [];
+      for (const match of w[r]) {
         if (match.winner && match.a && match.b && match.a !== 'BYE' && match.b !== 'BYE') {
-          const loser = match.winner === 'a' ? match.b : match.a;
-          allLosers.push(loser);
+          roundLosers.push(match.winner === 'a' ? match.b : match.a);
         }
       }
+      losersByRound.push(roundLosers);
     }
 
-    // Fill losers bracket with losers from winners
-    let loserIdx = 0;
-    for (let r = 0; r < l.length; r++) {
-      for (let m = 0; m < l[r].length; m++) {
-        if (r === 0) {
-          // First losers round: fill from winners losers
-          if (loserIdx < allLosers.length) l[r][m].a = allLosers[loserIdx++];
-          if (loserIdx < allLosers.length) l[r][m].b = allLosers[loserIdx++];
+    // Build losers bracket dynamically
+    // Pattern: for each winners round's losers, create matches
+    // Then survivors play against next wave of losers
+    const l: BracketMatch[][] = [];
+    const oldL = de.losers;
+    let survivors: BracketSlot[] = [];
+
+    for (let wave = 0; wave < losersByRound.length; wave++) {
+      const newLosers = losersByRound[wave];
+      // Combine survivors from previous losers round with new losers
+      const pool = [...survivors, ...newLosers];
+
+      if (pool.length < 2) {
+        survivors = pool;
+        continue;
+      }
+
+      // Create matches from pool
+      const round: BracketMatch[] = [];
+      const nextSurvivors: BracketSlot[] = [];
+      for (let i = 0; i < pool.length; i += 2) {
+        if (i + 1 < pool.length) {
+          // Try to preserve existing match result
+          const oldMatch = oldL[l.length]?.[round.length];
+          const match: BracketMatch = { a: pool[i], b: pool[i + 1], winner: oldMatch?.winner || null, scoreA: oldMatch?.scoreA, scoreB: oldMatch?.scoreB };
+          // Verify the teams match
+          const oldA = oldMatch?.a && oldMatch.a !== 'BYE' ? (oldMatch.a as any).id : null;
+          const oldB = oldMatch?.b && oldMatch.b !== 'BYE' ? (oldMatch.b as any).id : null;
+          const newA = pool[i] && pool[i] !== 'BYE' ? (pool[i] as any).id : null;
+          const newB = pool[i+1] && pool[i+1] !== 'BYE' ? (pool[i+1] as any).id : null;
+          if (oldA !== newA || oldB !== newB) {
+            match.winner = null; match.scoreA = null; match.scoreB = null;
+          }
+          round.push(match);
+          if (match.winner) {
+            nextSurvivors.push(match[match.winner]!);
+          }
         } else {
-          // Subsequent rounds: winners of previous losers round
-          const prevRound = l[r - 1];
-          const srcA = prevRound[m * 2];
-          const srcB = prevRound[m * 2 + 1];
-          if (srcA?.winner) l[r][m].a = srcA[srcA.winner];
-          if (srcB?.winner) l[r][m].b = srcB[srcB.winner];
+          // Odd team: auto-advance
+          nextSurvivors.push(pool[i]);
         }
       }
+      l.push(round);
+      survivors = nextSurvivors;
     }
 
-    // Grand final: winners champion vs losers champion
-    const gf = { ...de.grandFinal! };
+    // If there are still survivors that need to play each other
+    while (survivors.length >= 2) {
+      const round: BracketMatch[] = [];
+      const nextSurvivors: BracketSlot[] = [];
+      for (let i = 0; i < survivors.length; i += 2) {
+        if (i + 1 < survivors.length) {
+          const oldMatch = oldL[l.length]?.[round.length];
+          const match: BracketMatch = { a: survivors[i], b: survivors[i + 1], winner: oldMatch?.winner || null, scoreA: oldMatch?.scoreA, scoreB: oldMatch?.scoreB };
+          const oldA = oldMatch?.a && oldMatch.a !== 'BYE' ? (oldMatch.a as any).id : null;
+          const oldB = oldMatch?.b && oldMatch.b !== 'BYE' ? (oldMatch.b as any).id : null;
+          const newA = survivors[i] && survivors[i] !== 'BYE' ? (survivors[i] as any).id : null;
+          const newB = survivors[i+1] && survivors[i+1] !== 'BYE' ? (survivors[i+1] as any).id : null;
+          if (oldA !== newA || oldB !== newB) { match.winner = null; match.scoreA = null; match.scoreB = null; }
+          round.push(match);
+          if (match.winner) nextSurvivors.push(match[match.winner]!);
+        } else {
+          nextSurvivors.push(survivors[i]);
+        }
+      }
+      l.push(round);
+      survivors = nextSurvivors;
+    }
+
+    // Grand final
+    const gf: BracketMatch = { ...de.grandFinal!, a: null, b: null };
     const winnersFinal = w[w.length - 1][0];
-    const losersFinal = l.length > 0 ? l[l.length - 1][0] : null;
     if (winnersFinal?.winner) gf.a = winnersFinal[winnersFinal.winner];
-    if (losersFinal?.winner) gf.b = losersFinal[losersFinal.winner];
+    if (survivors.length === 1) gf.b = survivors[0];
+    // Preserve winner if teams match
+    if (de.grandFinal?.winner && gf.a && gf.b) {
+      const oldGA = de.grandFinal.a && de.grandFinal.a !== 'BYE' ? (de.grandFinal.a as any).id : null;
+      const oldGB = de.grandFinal.b && de.grandFinal.b !== 'BYE' ? (de.grandFinal.b as any).id : null;
+      const newGA = gf.a !== 'BYE' ? (gf.a as any).id : null;
+      const newGB = gf.b !== 'BYE' ? (gf.b as any).id : null;
+      if (oldGA === newGA && oldGB === newGB) { gf.winner = de.grandFinal.winner; gf.scoreA = de.grandFinal.scoreA; gf.scoreB = de.grandFinal.scoreB; }
+    }
 
     return { tipo: 'dupla_eliminacao', winners: w, losers: l, grandFinal: gf };
   }
