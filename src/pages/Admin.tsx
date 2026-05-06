@@ -2147,21 +2147,24 @@ export function Admin({ onLogout }: AdminProps) {
       {duplaElim && verBracket && (() => {
         const SH = 30; const MH = SH * 2; const BG = 40;
 
-        const renderDERounds = (rounds: BracketMatch[][], section: 'winners' | 'losers', isFlat?: boolean) => (
+        const renderDERounds = (rounds: BracketMatch[][], section: 'winners' | 'losers') => (
           <div style={{ overflow: 'auto', paddingBottom: 8 }}>
             <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, padding: '0 8px' }}>
               {rounds.map((round, rIdx) => {
-                const r0 = MH + (isFlat ? 10 : BG);
-                const ss = isFlat ? r0 : r0 * Math.pow(2, rIdx);
-                const tp = isFlat ? 0 : (r0 / 2) * (Math.pow(2, rIdx) - 1);
+                const isWinners = section === 'winners';
+                const r0 = MH + (isWinners ? BG : 16);
+                const ss = isWinners ? r0 * Math.pow(2, rIdx) : r0;
+                const tp = isWinners ? (r0 / 2) * (Math.pow(2, rIdx) - 1) : 0;
                 return (
                   <div key={rIdx} style={{ flexShrink: 0, width: 180, position: 'relative' }}>
                     {round.map((match, mIdx) => {
                       const aB = match.a === 'BYE'; const bB = match.b === 'BYE';
                       const isByeM = aB || bB;
                       const canClick = !!match.a && !!match.b && !aB && !bB;
+                      // Winners: hide BYE. Losers: show all (even empty)
+                      const hideMatch = isWinners && isByeM;
                       return (
-                        <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: isByeM ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)', background: isByeM ? 'transparent' : 'rgba(0,0,0,0.15)', visibility: isByeM ? 'hidden' : 'visible' }}>
+                        <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: hideMatch ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)', background: hideMatch ? 'transparent' : 'rgba(0,0,0,0.15)', visibility: hideMatch ? 'hidden' : 'visible' }}>
                           <div onClick={() => canClick && abrirPlacarDE(section, rIdx, mIdx)} style={{ padding: '0 12px', height: SH, fontSize: 13, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.a)}</span>{match.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreA}</span>}
                           </div>
@@ -2171,7 +2174,7 @@ export function Admin({ onLogout }: AdminProps) {
                         </div>
                       );
                     })}
-                    {!isFlat && rIdx < rounds.length - 1 && (() => {
+                    {rIdx < rounds.length - 1 && round.length >= 2 && (() => {
                       const totalH = tp + (round.length - 1) * ss + MH;
                       return (
                         <svg style={{ position: 'absolute', right: -40, top: 0, width: 40, height: totalH, pointerEvents: 'none' }}>
@@ -2206,7 +2209,7 @@ export function Admin({ onLogout }: AdminProps) {
 
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '8px 0' }} />
             <h3 style={{ color: '#e74c3c', fontSize: 13, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Repescagem</h3>
-            {renderDERounds(duplaElim.losers, 'losers', true)}
+            {renderDERounds(duplaElim.losers, 'losers')}
 
             {gf && (
               <>
