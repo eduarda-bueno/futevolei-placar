@@ -2144,32 +2144,30 @@ export function Admin({ onLogout }: AdminProps) {
         );
       })()}
 
-      {/* ── Modo: Dupla Eliminacao ── */}
+      {/* ── Modo: Dupla Eliminacao (espelhado) ── */}
       {duplaElim && verBracket && (() => {
         const SH = 30; const MH = SH * 2; const BG = 40;
 
-        const renderDERounds = (rounds: BracketMatch[][], section: 'winners' | 'losers') => (
-          <div style={{ overflow: 'auto', paddingBottom: 8 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, padding: '0 8px' }}>
+        const renderDEColumn = (rounds: BracketMatch[][], section: 'winners' | 'losers', mirrored: boolean) => {
+          const isW = section === 'winners';
+          const r0 = MH + (isW ? BG : 16);
+          return (
+            <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 40, flexDirection: mirrored ? 'row-reverse' : 'row' }}>
               {rounds.map((round, rIdx) => {
-                const isWinners = section === 'winners';
-                const r0 = MH + (isWinners ? BG : 16);
-                const ss = isWinners ? r0 * Math.pow(2, rIdx) : r0;
-                const tp = isWinners ? (r0 / 2) * (Math.pow(2, rIdx) - 1) : 0;
+                const ss = isW ? r0 * Math.pow(2, rIdx) : r0;
+                const tp = isW ? (r0 / 2) * (Math.pow(2, rIdx) - 1) : 0;
                 return (
-                  <div key={rIdx} style={{ flexShrink: 0, width: 180, position: 'relative' }}>
+                  <div key={rIdx} style={{ flexShrink: 0, width: 160, position: 'relative' }}>
                     {round.map((match, mIdx) => {
                       const aB = match.a === 'BYE'; const bB = match.b === 'BYE';
-                      const isByeM = aB || bB;
+                      const hideMatch = isW && (aB || bB);
                       const canClick = !!match.a && !!match.b && !aB && !bB;
-                      // Winners: hide BYE. Losers: show all (even empty)
-                      const hideMatch = isWinners && isByeM;
                       return (
                         <div key={mIdx} style={{ marginTop: mIdx === 0 ? tp : ss - MH, borderRadius: 8, overflow: 'hidden', border: hideMatch ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)', background: hideMatch ? 'transparent' : 'rgba(0,0,0,0.15)', visibility: hideMatch ? 'hidden' : 'visible' }}>
-                          <div onClick={() => canClick && abrirPlacarDE(section, rIdx, mIdx)} style={{ padding: '0 12px', height: SH, fontSize: 13, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div onClick={() => canClick && abrirPlacarDE(section, rIdx, mIdx)} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: match.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: canClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {match.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.a)}</span>{match.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreA}</span>}
                           </div>
-                          <div onClick={() => canClick && abrirPlacarDE(section, rIdx, mIdx)} style={{ padding: '0 12px', height: SH, fontSize: 13, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: canClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div onClick={() => canClick && abrirPlacarDE(section, rIdx, mIdx)} style={{ padding: '0 10px', height: SH, fontSize: 12, fontWeight: match.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: match.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', cursor: canClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {match.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slotName(match.b)}</span>{match.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{match.scoreB}</span>}
                           </div>
                         </div>
@@ -2178,8 +2176,8 @@ export function Admin({ onLogout }: AdminProps) {
                     {rIdx < rounds.length - 1 && round.length >= 2 && (() => {
                       const totalH = tp + (round.length - 1) * ss + MH;
                       return (
-                        <svg style={{ position: 'absolute', right: -40, top: 0, width: 40, height: totalH, pointerEvents: 'none' }}>
-                          {round.map((m1, mi) => { if (mi % 2 !== 0) return null; const m2 = round[mi+1]; const b1 = m1.a==='BYE'||m1.b==='BYE'; const b2 = m2&&(m2.a==='BYE'||m2.b==='BYE'); if(b1&&b2) return null; const y1 = tp + mi * ss + MH / 2; const y2 = tp + (mi + 1) * ss + MH / 2; const md = (y1 + y2) / 2; return (<g key={mi}>{!b1&&<line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}{!b2&&<line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}<line x1="16" y1={b1?md:y1} x2="16" y2={b2?md:y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={md} x2="40" y2={md} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /></g>); })}
+                        <svg style={{ position: 'absolute', [mirrored ? 'left' : 'right']: -40, top: 0, width: 40, height: totalH, pointerEvents: 'none', transform: mirrored ? 'scaleX(-1)' : 'none' }}>
+                          {round.map((m1, mi) => { if (mi % 2 !== 0) return null; const m2 = round[mi+1]; const b1 = isW && (m1.a==='BYE'||m1.b==='BYE'); const b2 = isW && m2 && (m2.a==='BYE'||m2.b==='BYE'); if(b1&&b2) return null; const y1 = tp + mi * ss + MH / 2; const y2 = tp + (mi + 1) * ss + MH / 2; const md = (y1 + y2) / 2; return (<g key={mi}>{!b1&&<line x1="0" y1={y1} x2="16" y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}{!b2&&<line x1="0" y1={y2} x2="16" y2={y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />}<line x1="16" y1={b1?md:y1} x2="16" y2={b2?md:y2} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /><line x1="16" y1={md} x2="40" y2={md} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" /></g>); })}
                         </svg>
                       );
                     })()}
@@ -2187,8 +2185,8 @@ export function Admin({ onLogout }: AdminProps) {
                 );
               })}
             </div>
-          </div>
-        );
+          );
+        };
 
         const gf = duplaElim.grandFinal;
         const canGF = gf && gf.a && gf.b && gf.a !== 'BYE' && gf.b !== 'BYE';
@@ -2196,46 +2194,51 @@ export function Admin({ onLogout }: AdminProps) {
         return (
           <>
             {campeao && (
-              <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
-                <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
-                <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
-                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
-                  {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
-                </div>
+              <div style={{ textAlign: 'center', marginBottom: 12, padding: 14, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+                <div style={{ fontSize: 24, marginBottom: 2 }}>🏆</div>
+                <div style={{ color: '#ffd700', fontSize: 18, fontWeight: 'bold' }}>{campeao}</div>
               </div>
             )}
 
-            <h3 style={{ color: '#2ecc71', fontSize: 13, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Chave Principal</h3>
-            {renderDERounds(duplaElim.winners, 'winners')}
+            {/* Layout espelhado: Winners ← Final → Losers */}
+            <div style={{ overflow: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center', minWidth: 'fit-content', padding: '0 8px' }}>
+                {/* Chave Principal (esquerda → centro) */}
+                <div>
+                  <h3 style={{ color: '#2ecc71', fontSize: 11, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Chave Principal</h3>
+                  {renderDEColumn(duplaElim.winners, 'winners', false)}
+                </div>
 
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '8px 0' }} />
-            <h3 style={{ color: '#e74c3c', fontSize: 13, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Repescagem</h3>
-            {renderDERounds(duplaElim.losers, 'losers')}
-
-            {gf && (
-              <>
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', margin: '8px 0' }} />
-                <h3 style={{ color: '#ffd700', fontSize: 13, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Grande Final</h3>
-                <div
-                  onClick={() => canGF && abrirPlacarDE('final', 0, 0)}
-                  style={{ borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,215,0,0.4)', background: 'rgba(0,0,0,0.2)', maxWidth: 220, margin: '0 auto', cursor: canGF ? 'pointer' : 'default' }}
-                >
-                  <div style={{ padding: '0 12px', height: 32, fontSize: 13, fontWeight: gf.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: gf.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center' }}>
-                    {gf.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1 }}>{slotName(gf.a)}</span>{gf.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{gf.scoreA}</span>}
-                  </div>
-                  <div style={{ padding: '0 12px', height: 32, fontSize: 13, fontWeight: gf.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: gf.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center' }}>
-                    {gf.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1 }}>{slotName(gf.b)}</span>{gf.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>{gf.scoreB}</span>}
+                {/* Grande Final (centro) */}
+                <div style={{ flexShrink: 0 }}>
+                  <h3 style={{ color: '#ffd700', fontSize: 11, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Final</h3>
+                  <div
+                    onClick={() => canGF && abrirPlacarDE('final', 0, 0)}
+                    style={{ borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,215,0,0.4)', background: 'rgba(0,0,0,0.2)', width: 150, cursor: canGF ? 'pointer' : 'default' }}
+                  >
+                    <div style={{ padding: '0 10px', height: 30, fontSize: 12, fontWeight: gf?.winner === 'a' ? 'bold' : 'normal', color: '#fff', background: gf?.winner === 'a' ? 'rgba(46,204,113,0.4)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center' }}>
+                      {gf?.winner === 'a' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1 }}>{slotName(gf?.a || null)}</span>{gf?.scoreA != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{gf.scoreA}</span>}
+                    </div>
+                    <div style={{ padding: '0 10px', height: 30, fontSize: 12, fontWeight: gf?.winner === 'b' ? 'bold' : 'normal', color: '#fff', background: gf?.winner === 'b' ? 'rgba(46,204,113,0.4)' : 'transparent', display: 'flex', alignItems: 'center' }}>
+                      {gf?.winner === 'b' && <span style={{ color: '#2ecc71', marginRight: 4 }}>✓</span>}<span style={{ flex: 1 }}>{slotName(gf?.b || null)}</span>{gf?.scoreB != null && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{gf.scoreB}</span>}
+                    </div>
                   </div>
                 </div>
-              </>
-            )}
+
+                {/* Repescagem (direita → centro, espelhada) */}
+                <div>
+                  <h3 style={{ color: '#e74c3c', fontSize: 11, fontWeight: 700, marginBottom: 6, textAlign: 'center' }}>Repescagem</h3>
+                  {renderDEColumn(duplaElim.losers, 'losers', true)}
+                </div>
+              </div>
+            </div>
 
             {/* Popup Placar DE */}
             {showPlacar?.tipo?.startsWith('de_') && (() => {
               const section = showPlacar.tipo!.replace('de_', '') as 'winners' | 'losers' | 'final';
               let nA = '—', nB = '—';
               if (section === 'final' && gf) { nA = slotName(gf.a); nB = slotName(gf.b); }
-              else { const m = (section === 'winners' ? duplaElim.winners : duplaElim.losers)[showPlacar.rIdx][showPlacar.mIdx]; nA = slotName(m.a); nB = slotName(m.b); }
+              else { const rounds = section === 'winners' ? duplaElim.winners : duplaElim.losers; const m = rounds[showPlacar.rIdx]?.[showPlacar.mIdx]; if (m) { nA = slotName(m.a); nB = slotName(m.b); } }
               return (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }} onClick={() => setShowPlacar(null)}>
                   <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: '24px 20px', maxWidth: 300, width: '90%', textAlign: 'center' }}>
