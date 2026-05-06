@@ -14,8 +14,7 @@ Aplicativo PWA para gerenciar placares e torneios de futevolei e beach tennis.
 ### Jogos (visualizacao publica)
 - Torneios fixados pelo admin
 - Categorias agrupadas (Feminino, Masculino, Misto)
-- Bracket/round-robin somente leitura com placar
-- Duas chaves espelhadas com final no centro
+- Todos os modos de bracket somente leitura com placar
 - Estatisticas com filtros (V/D/Pts)
 - Campeao (Campeas feminino / Campeoes masculino e misto)
 
@@ -24,12 +23,12 @@ Aplicativo PWA para gerenciar placares e torneios de futevolei e beach tennis.
 - Torneios via popup (nome + datas)
 - Fixar/desfixar torneios
 - Soft-delete em todas as tabelas
-- Categorias: Feminino, Masculino, Misto
-- Subcategorias: Estreante, Iniciante, Intermediario, Avancado, 30+
+- Categorias e subcategorias
 - Duplas como tags inline
 - Popup de placar ao clicar no jogo
 - Alterar posicao de duplas (modo troca)
 - Estatisticas com filtros
+- Podio completo (ouro, prata, disputa 3o, bronze)
 
 ## Sorteio (2 niveis)
 
@@ -37,40 +36,48 @@ Aplicativo PWA para gerenciar placares e torneios de futevolei e beach tennis.
 - **Uma Chave** — bracket unico
 - **Duas Chaves** — espelhadas com final no centro (4+ duplas)
 
-### Nivel 2: Tipo (dentro de cada estrutura)
-- **Sorteio Aleatorio** — eliminatoria com BYEs nas pontas
+### Nivel 2: Tipo
+- **Sorteio Aleatorio** — eliminatoria com BYEs
 - **Todos Contra Todos** — round-robin com classificacao
+- **Dupla Eliminacao** — principal + repescagem + grande final (so Uma Chave, 3+ duplas)
 
-### Combinacoes
+### 5 Combinacoes
 | Estrutura | Tipo | Resultado |
 |---|---|---|
-| Uma Chave | Aleatorio | Bracket eliminatorio |
+| Uma Chave | Aleatorio | Bracket eliminatorio + podio |
 | Uma Chave | Todos x Todos | Round-robin com classificacao |
+| Uma Chave | Dupla Eliminacao | Principal ← Final → Repescagem (espelhado) |
 | Duas Chaves | Aleatorio | Brackets espelhados + final |
 | Duas Chaves | Todos x Todos | Round-robin em cada chave + final |
 
-### Visual
-- BYE matches invisiveis (espaco mantido para alinhamento)
-- Conectores ocultos em BYEs, parciais quando 1 BYE
-- Placar visivel no cantinho direito dos slots
+### Dupla Eliminacao
+```
+Chave Principal          Final         Repescagem
+Dupla 1 ─┐                          ┌─ (perdedores)
+          ├─ Venc ─┐  ┌────────┐  ┌─ Venc ─┤
+Dupla 2 ─┘        ├─▶│Camp P  │  │         └─ (perdedores)
+                      │  vs   │
+Dupla 3 ─┐        ┌─▶│Camp R  │  │         ┌─ (perdedores)
+          ├─ Venc ─┘  └────────┘  └─ Venc ─┤
+Dupla 4 ─┘                          └─ (perdedores)
+```
+- Quem perde na principal vai para a repescagem
+- Perdedores chegam por ondas (round by round)
+- Repescagem espelhada, brackets visiveis vazios ate preenchidos
+- Grande final entre campeao principal vs campeao repescagem
+
+### Podio (eliminatoria simples)
+- 🏆 Campeao = vencedor da final
+- 🥈 Segundo = perdedor da final
+- Disputa 3o lugar = jogo entre semifinalistas perdedores
+- 🥉 Terceiro = vencedor da disputa
 
 ## Tech Stack
-- **Frontend**: React 19 + TypeScript + Vite 7
-- **Estilo**: Tailwind CSS 4 + inline styles
-- **Backend**: Supabase (PostgreSQL + Auth + RLS)
-- **PWA**: vite-plugin-pwa com workbox
-- **Fontes**: Roboto (UI) + Digital-7 (placar)
-- **Deploy**: Vercel (auto-deploy via GitHub)
+- React 19 + TypeScript + Vite 7 + Tailwind 4
+- Supabase (PostgreSQL + Auth + RLS)
+- vite-plugin-pwa + Vercel
 
-## Setup Local
-```bash
-npm install
-# .env: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
-npm run dev
-npm run build
-```
-
-## Banco de Dados (Supabase)
+## Banco de Dados
 
 | Tabela | Campos principais |
 |---|---|
@@ -81,28 +88,16 @@ npm run build
 | brackets | categoria_id, dados (jsonb), campeao, ativo |
 
 ### brackets.dados (JSON)
-- Eliminatoria: `BracketRound[]` (scoreA/scoreB)
+- Eliminatoria: `BracketRound[]`
 - Round-robin: `{ tipo: 'todos_contra_todos', jogos }`
+- Dupla elim: `{ tipo: 'dupla_eliminacao', winners, losers, grandFinal }`
 - Duas chaves elim: `{ tipo: 'duas_chaves', chaveA, chaveB, final }`
 - Duas chaves RR: `{ tipo: 'duas_chaves', subtipo: 'todos_contra_todos', jogosA, jogosB, final }`
-
-### Login Admin
-Usuario simples → `usuario@ctriozinho.app`. Criar no Supabase Dashboard.
-
-## Estrutura
-```
-src/
-  App.tsx             # Layout, menu, footer context
-  pages/
-    PlacarRapido.tsx  # Placar digital
-    Chaves.tsx        # Jogos publico
-    Admin.tsx         # Admin completo
-    AdminLogin.tsx    # Login
-```
 
 ## Fluxo Admin
 ```
 Login > Torneios > Categoria > Subcategoria > Duplas + Sorteio
-  Sorteio: Uma Chave / Duas Chaves > Aleatorio / Todos x Todos
-  > Bracket + Placar + Estatisticas
+  Uma Chave: Aleatorio / Todos x Todos / Dupla Eliminacao
+  Duas Chaves: Aleatorio / Todos x Todos
+  > Bracket + Placar + Podio + Estatisticas
 ```
