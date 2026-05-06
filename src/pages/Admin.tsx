@@ -1376,16 +1376,40 @@ export function Admin({ onLogout }: AdminProps) {
       {/* ── Modo: Chave do torneio ── */}
       {bracket && verBracket && (
         <>
-          {/* Campeão */}
-          {campeao && !modoTroca && (
-            <div style={{ textAlign: 'center', marginBottom: 16, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
-              <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
-              <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
-                {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
-              </div>
-            </div>
-          )}
+          {/* Campeão + Terceiro Lugar */}
+          {campeao && !modoTroca && (() => {
+            // Terceiro lugar: perdedores da semifinal (penúltima rodada)
+            let terceiro: string | null = null;
+            if (bracket && bracket.length >= 2) {
+              const semi = bracket[bracket.length - 2];
+              const semiLosers: string[] = [];
+              for (const m of semi) {
+                if (m.winner && m.a && m.b && m.a !== 'BYE' && m.b !== 'BYE') {
+                  const loser = m.winner === 'a' ? m.b : m.a;
+                  if (loser) semiLosers.push(slotName(loser));
+                }
+              }
+              if (semiLosers.length > 0) terceiro = semiLosers.join(' / ');
+            }
+            return (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: 8, padding: 16, background: 'rgba(255,255,255,0.15)', borderRadius: 14, flexShrink: 0 }}>
+                  <div style={{ fontSize: 28, marginBottom: 4 }}>🏆</div>
+                  <div style={{ color: '#ffd700', fontSize: 20, fontWeight: 'bold' }}>{campeao}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 }}>
+                    {categoriaNome.toLowerCase().startsWith('feminino') ? 'Campeãs!' : 'Campeões!'}
+                  </div>
+                </div>
+                {terceiro && (
+                  <div style={{ textAlign: 'center', marginBottom: 16, padding: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 10, flexShrink: 0 }}>
+                    <div style={{ fontSize: 16, marginBottom: 2 }}>🥉</div>
+                    <div style={{ color: '#cd7f32', fontSize: 14, fontWeight: 'bold' }}>{terceiro}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 }}>Terceiro lugar</div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {/* Modo troca info */}
           {modoTroca && (
