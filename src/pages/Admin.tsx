@@ -650,6 +650,7 @@ export function Admin({ onLogout }: AdminProps) {
     setDuasChaves(data);
     setBracket(null);
     setRoundRobin(null);
+    setDuplaElim(null);
     setTipoSorteio('duas_chaves');
     setCampeao(null);
     setVerBracket(true);
@@ -673,7 +674,7 @@ export function Admin({ onLogout }: AdminProps) {
     setDuasChaves(data);
     setBracket(null);
     setRoundRobin(null);
-
+    setDuplaElim(null);
     setTipoSorteio('duas_chaves');
     setCampeao(null);
     setVerBracket(true);
